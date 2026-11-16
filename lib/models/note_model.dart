@@ -5,12 +5,14 @@ class NoteModel {
   String content;
   String category;
   int colorValue;
+
   bool isPinned;
   bool isFavorite;
+
   DateTime createdAt;
   DateTime updatedAt;
 
-  // Optional image attached to the note
+  String? contentDelta;
   String? imagePath;
 
   NoteModel({
@@ -23,10 +25,13 @@ class NoteModel {
     this.isFavorite = false,
     required this.createdAt,
     required this.updatedAt,
+    this.contentDelta,
     this.imagePath,
   });
 
-  factory NoteModel.fromJson(Map<String, dynamic> json) {
+  factory NoteModel.fromJson(
+    Map<String, dynamic> json,
+  ) {
     return NoteModel(
       id: json['id'] ?? '',
       title: json['title'] ?? '',
@@ -35,10 +40,15 @@ class NoteModel {
       colorValue: json['colorValue'] ?? 0xFFF6E0DF,
       isPinned: json['isPinned'] ?? false,
       isFavorite: json['isFavorite'] ?? false,
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ??
+      createdAt: DateTime.tryParse(
+            json['createdAt'] ?? '',
+          ) ??
           DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ??
+      updatedAt: DateTime.tryParse(
+            json['updatedAt'] ?? '',
+          ) ??
           DateTime.now(),
+      contentDelta: json['contentDelta'] as String?,
       imagePath: json['imagePath'],
     );
   }
@@ -48,6 +58,7 @@ class NoteModel {
       'id': id,
       'title': title,
       'content': content,
+      'contentDelta': contentDelta,
       'category': category,
       'colorValue': colorValue,
       'isPinned': isPinned,

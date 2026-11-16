@@ -1,13 +1,15 @@
+
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:image_picker/image_picker.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
 import 'package:mindshelf_note/theme/color_app.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/note_model.dart';
-
 
 class NoteEditorScreen extends StatefulWidget {
   final NoteModel? note;
@@ -25,7 +27,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   final NoteServices _noteService = NoteServices();
 
   late final TextEditingController _titleController;
-  late final TextEditingController _contentController;
+  late final quill.QuillController _quillController;
 
   final List<String> _categories = [
     'Personal',
@@ -51,10 +53,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late bool _isFavorite;
 
   bool _isSaving = false;
+
   final ImagePicker _imagePicker = ImagePicker();
 
   String? _imagePath;
   bool _isPickingImage = false;
+
+  TextSelection? _toolbarSelection;
 
   bool get _isEditing => widget.note != null;
 
@@ -69,8 +74,31 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       text: note?.title ?? '',
     );
 
-    _contentController = TextEditingController(
-      text: note?.content ?? '',
+    quill.Document document;
+    final savedDelta = note?.contentDelta;
+    final plainContent = note?.content ?? '';
+
+    try {
+      if (savedDelta != null && savedDelta.isNotEmpty) {
+        document = quill.Document.fromJson(
+          jsonDecode(savedDelta) as List,
+        );
+      } else {
+        document = quill.Document();
+        if (plainContent.isNotEmpty) {
+          document.insert(0, plainContent);
+        }
+      }
+    } catch (_) {
+      document = quill.Document();
+      if (plainContent.isNotEmpty) {
+        document.insert(0, plainContent);
+      }
+    }
+
+    _quillController = quill.QuillController(
+      document: document,
+      selection: const TextSelection.collapsed(offset: 0),
     );
 
     _selectedCategory = note?.category ?? 'Ideas';
@@ -86,7 +114,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _contentController.dispose();
+    _quillController.dispose();
     super.dispose();
   }
 
@@ -104,85 +132,207 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Color get _surfaceColor =>
       _isDark ? AppColors.darkCard : AppColors.lightSurface;
 
-  void _formatSelection(String marker) {
-    final text = _contentController.text;
-    final selection = _contentController.selection;
+  // Preserve editor selection before toolbar interaction.
+  void _captureToolbarSelection() {
+    final selection = _quillController.selection;
+
+    if (selection.isValid) {
+      _toolbarSelection = selection;
+    }
+  }
+
+  // Apply formatting to the saved selection.
+  void _applyAttributeToSavedSelection(
+    quill.Attribute attribute,
+  ) {
+    final selection =
+        _toolbarSelection ?? _quillController.selection;
 
     if (!selection.isValid) return;
 
     final start = selection.start;
-    final end = selection.end;
+    final length = selection.end - selection.start;
 
-    final selectedText = text.substring(start, end);
-
-    if (selectedText.isEmpty) {
-      final value = text.substring(0, start) +
-          marker +
-          marker +
-          text.substring(start);
-
-      _contentController.value = TextEditingValue(
-        text: value,
-        selection: TextSelection.collapsed(
-          offset: start + marker.length,
-        ),
+    if (length > 0) {
+      _quillController.formatText(
+        start,
+        length,
+        attribute,
       );
-      return;
+
+      // Restore selection after applying formatting.
+      _quillController.updateSelection(
+        selection,
+        quill.ChangeSource.local,
+      );
+    } else {
+      // Apply formatting to newly typed text when
+      // the cursor is not selecting any text.
+      _quillController.updateSelection(
+        selection,
+        quill.ChangeSource.local,
+      );
+
+      _quillController.formatSelection(attribute);
     }
 
-    final formatted = '$marker$selectedText$marker';
+    _toolbarSelection = _quillController.selection;
+  }
 
-    final newText = text.replaceRange(
-      start,
-      end,
-      formatted,
-    );
-
-    _contentController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection(
-        baseOffset: start + marker.length,
-        extentOffset: start + marker.length + selectedText.length,
-      ),
-    );
+  void _formatSelection(quill.Attribute attribute) {
+    _applyAttributeToSavedSelection(attribute);
   }
 
   void _insertList(bool numbered) {
-    final selection = _contentController.selection;
-    final text = _contentController.text;
+    _formatSelection(
+      numbered
+          ? quill.Attribute.ol
+          : quill.Attribute.ul,
+    );
+  }
 
-    final start = selection.isValid ? selection.start : text.length;
-    final end = selection.isValid ? selection.end : text.length;
+  void _setAlignment(quill.Attribute alignment) {
+    _formatSelection(alignment);
+  }
 
-    final selected = text.substring(start, end);
+  // Alignment options.
+  Future<void> _showAlignmentOptions() async {
+    _captureToolbarSelection();
 
-    final prefix = numbered ? '1. ' : '• ';
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Theme.of(context).cardTheme.color,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _alignmentOption(
+                  sheetContext,
+                  Icons.format_align_left,
+                  quill.Attribute.leftAlignment,
+                  'Left',
+                ),
+                _alignmentOption(
+                  sheetContext,
+                  Icons.format_align_center,
+                  quill.Attribute.centerAlignment,
+                  'Center',
+                ),
+                _alignmentOption(
+                  sheetContext,
+                  Icons.format_align_right,
+                  quill.Attribute.rightAlignment,
+                  'Right',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-    final formatted = selected.isEmpty
-        ? '\n$prefix'
-        : selected
-            .split('\n')
-            .map((line) => '$prefix$line')
-            .join('\n');
-
-    final newText = text.replaceRange(start, end, formatted);
-
-    _contentController.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(
-        offset: start + formatted.length,
+  Widget _alignmentOption(
+    BuildContext sheetContext,
+    IconData icon,
+    quill.Attribute attribute,
+    String label,
+  ) {
+    return TextButton.icon(
+      onPressed: () {
+        _setAlignment(attribute);
+        Navigator.pop(sheetContext);
+      },
+      icon: Icon(icon, color: _textColor),
+      label: Text(
+        label,
+        style: TextStyle(color: _textColor),
       ),
     );
   }
 
+  // Text color options.
+  Future<void> _showTextColors() async {
+    _captureToolbarSelection();
+
+    const colors = <Color>[
+      Color(0xFF292929),
+      Color(0xFF712E3F),
+      Color(0xFFD64B4B),
+      Color(0xFF2878C8),
+      Color(0xFF27845B),
+      Color(0xFF8A5AC2),
+      Color(0xFFE08A26),
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Theme.of(context).cardTheme.color,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              spacing: 18,
+              runSpacing: 16,
+              children: colors.map((color) {
+                final hex =
+                    '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+
+                return GestureDetector(
+                  onTap: () {
+                    final attribute =
+                        quill.Attribute.fromKeyValue(
+                      'color',
+                      hex,
+                    );
+
+                    if (attribute != null) {
+                      _applyAttributeToSavedSelection(
+                        attribute,
+                      );
+                    }
+
+                    Navigator.pop(sheetContext);
+                  },
+                  child: CircleAvatar(
+                    radius: 17,
+                    backgroundColor: color,
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Save note and rich-text Delta.
   Future<void> _saveNote() async {
     final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
+
+    final content =
+        _quillController.document.toPlainText().trim();
+    final contentDelta = jsonEncode(
+      _quillController.document.toDelta().toJson(),
+    );
 
     if (title.isEmpty && content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please write a title or note first.'),
+          content: Text(
+            'Please write a title or note first.',
+          ),
         ),
       );
       return;
@@ -199,6 +349,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             now.microsecondsSinceEpoch.toString(),
         title: title.isEmpty ? 'Untitled Note' : title,
         content: content,
+        contentDelta: contentDelta,
         category: _selectedCategory,
         colorValue: _selectedColor.toARGB32(),
         isPinned: _isPinned,
@@ -217,13 +368,16 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to save note: $e')),
+        SnackBar(
+          content: Text('Unable to save note: $e'),
+        ),
       );
 
       setState(() => _isSaving = false);
     }
   }
 
+  // More options.
   void _showMoreOptions() {
     showModalBottomSheet(
       context: context,
@@ -243,7 +397,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   _isPinned ? 'Unpin Note' : 'Pin Note',
                 ),
                 onTap: () {
-                  setState(() => _isPinned = !_isPinned);
+                  setState(
+                    () => _isPinned = !_isPinned,
+                  );
                   Navigator.pop(sheetContext);
                 },
               ),
@@ -259,7 +415,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       : 'Add to Favorites',
                 ),
                 onTap: () {
-                  setState(() => _isFavorite = !_isFavorite);
+                  setState(
+                    () => _isFavorite = !_isFavorite,
+                  );
                   Navigator.pop(sheetContext);
                 },
               ),
@@ -282,28 +440,33 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     );
   }
 
+  // Delete note.
   Future<void> _deleteNote() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Note?'),
-        content: const Text(
-          'Are you sure you want to delete this note?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Note?'),
+          content: const Text(
+            'Are you sure you want to delete this note?',
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm != true) return;
@@ -315,15 +478,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     }
   }
 
+  // Formatting toolbar button.
   Widget _formatButton(
     IconData icon,
     VoidCallback onTap, {
     bool active = false,
   }) {
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _captureToolbarSelection(),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(9),
         child: Container(
           height: 42,
           decoration: BoxDecoration(
@@ -353,11 +518,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     );
   }
 
+  // Pick image.
   Future<void> _pickImage() async {
     try {
       setState(() => _isPickingImage = true);
 
-      final XFile? pickedFile = await _imagePicker.pickImage(
+      final XFile? pickedFile =
+          await _imagePicker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 85,
         maxWidth: 1600,
@@ -365,7 +532,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
       if (pickedFile == null || !mounted) return;
 
-      final directory = await getApplicationDocumentsDirectory();
+      final directory =
+          await getApplicationDocumentsDirectory();
 
       final extension = pickedFile.path.contains('.')
           ? pickedFile.path.split('.').last
@@ -374,8 +542,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       final fileName =
           'note_${DateTime.now().microsecondsSinceEpoch}.$extension';
 
-      final savedFile = await File(pickedFile.path)
-          .copy('${directory.path}/$fileName');
+      final savedFile = await File(pickedFile.path).copy(
+        '${directory.path}/$fileName',
+      );
 
       if (!mounted) return;
 
@@ -385,8 +554,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to select image: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to select image: $e'),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isPickingImage = false);
@@ -400,6 +572,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     });
   }
 
+  // Image section.
   Widget _imageSection() {
     final isDark = _isDark;
 
@@ -408,7 +581,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       children: [
         _sectionLabel('Note Image'),
         const SizedBox(height: 10),
-        if (_imagePath != null && File(_imagePath!).existsSync())
+
+        if (_imagePath != null &&
+            File(_imagePath!).existsSync())
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
             child: Stack(
@@ -424,8 +599,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   right: 8,
                   child: IconButton(
                     onPressed: _removeImage,
-                    style: IconButton.styleFrom(backgroundColor: Colors.white),
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.red,
+                    ),
                   ),
                 ),
               ],
@@ -439,17 +619,23 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               width: double.infinity,
               height: 115,
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : const Color(0xFFFFF0F2),
+                color: isDark
+                    ? AppColors.darkCard
+                    : const Color(0xFFFFF0F2),
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
+                  color: AppColors.primary.withValues(
+                    alpha: 0.3,
+                  ),
                 ),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (_isPickingImage)
-                    const CircularProgressIndicator(color: AppColors.primary)
+                    const CircularProgressIndicator(
+                      color: AppColors.primary,
+                    )
                   else
                     const Icon(
                       Icons.add_photo_alternate_outlined,
@@ -478,17 +664,21 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor:
+          Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
             // TOP BAR
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 5, 12, 8),
+              padding: const EdgeInsets.fromLTRB(
+                12, 5, 12, 8,
+              ),
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () =>
+                        Navigator.pop(context),
                     icon: Icon(
                       Icons.arrow_back,
                       color: _textColor,
@@ -496,7 +686,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   ),
                   const Spacer(),
                   TextButton(
-                    onPressed: _isSaving ? null : _saveNote,
+                    onPressed:
+                        _isSaving ? null : _saveNote,
                     child: _isSaving
                         ? const SizedBox(
                             width: 18,
@@ -528,9 +719,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             // EDITOR BODY
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 5, 20, 25),
+                padding: const EdgeInsets.fromLTRB(
+                  20, 5, 20, 25,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     // TITLE
                     TextField(
@@ -547,7 +741,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                           fontSize: 23,
                         ),
                         filled: false,
-                        contentPadding: const EdgeInsets.symmetric(
+                        contentPadding:
+                            const EdgeInsets.symmetric(
                           vertical: 12,
                         ),
                         border: UnderlineInputBorder(
@@ -557,14 +752,16 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                                 : AppColors.lightDivider,
                           ),
                         ),
-                        enabledBorder: UnderlineInputBorder(
+                        enabledBorder:
+                            UnderlineInputBorder(
                           borderSide: BorderSide(
                             color: _isDark
                                 ? AppColors.darkDivider
                                 : AppColors.lightDivider,
                           ),
                         ),
-                        focusedBorder: const UnderlineInputBorder(
+                        focusedBorder:
+                            const UnderlineInputBorder(
                           borderSide: BorderSide(
                             color: AppColors.primary,
                             width: 1.4,
@@ -577,27 +774,35 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
                     // FORMATTING TOOLBAR
                     Container(
-                      padding: const EdgeInsets.symmetric(
+                      padding:
+                          const EdgeInsets.symmetric(
                         horizontal: 5,
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: _surfaceColor,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius:
+                            BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
                           _formatButton(
                             Icons.format_bold,
-                            () => _formatSelection('**'),
+                            () => _formatSelection(
+                              quill.Attribute.bold,
+                            ),
                           ),
                           _formatButton(
                             Icons.format_italic,
-                            () => _formatSelection('*'),
+                            () => _formatSelection(
+                              quill.Attribute.italic,
+                            ),
                           ),
                           _formatButton(
                             Icons.format_underline,
-                            () => _formatSelection('__'),
+                            () => _formatSelection(
+                              quill.Attribute.underline,
+                            ),
                           ),
                           _formatButton(
                             Icons.format_list_bulleted,
@@ -607,34 +812,67 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                             Icons.format_list_numbered,
                             () => _insertList(true),
                           ),
+                          _formatButton(
+                            Icons.format_align_left,
+                            _showAlignmentOptions,
+                          ),
+                          _formatButton(
+                            Icons.format_color_text,
+                            _showTextColors,
+                          ),
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 15),
 
-                    // CONTENT
-                    TextField(
-                      controller: _contentController,
-                      keyboardType: TextInputType.multiline,
-                      maxLines: null,
-                      minLines: 11,
-                      style: TextStyle(
-                        color: _textColor,
-                        fontSize: 15,
-                        height: 1.65,
+                    // RICH TEXT CONTENT
+                    Container(
+                      constraints:
+                          const BoxConstraints(
+                        minHeight: 220,
                       ),
-                      decoration: InputDecoration(
-                        hintText: 'Write your ideas here...',
-                        hintStyle: TextStyle(
-                          color: _secondaryColor,
-                          fontSize: 14,
+                      width: double.infinity,
+                      child: quill.QuillEditor.basic(
+                        controller: _quillController,
+                        config: quill.QuillEditorConfig(
+                          placeholder:
+                              'Write your ideas here...',
+                          padding: EdgeInsets.zero,
+                          scrollable: false,
+                          minHeight: 220,
+                          customStyles: quill.DefaultStyles(
+                            color: _textColor,
+                            bold: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            italic: const TextStyle(
+                              fontStyle: FontStyle.italic,
+                            ),
+                            underline: const TextStyle(
+                              decoration:
+                                  TextDecoration.underline,
+                            ),
+                            paragraph:
+                                quill.DefaultTextBlockStyle(
+                              TextStyle(
+                                color: _textColor,
+                                fontSize: 15,
+                                height: 1.65,
+                              ),
+                              const quill.HorizontalSpacing(
+                                0, 0,
+                              ),
+                              const quill.VerticalSpacing(
+                                0, 0,
+                              ),
+                              const quill.VerticalSpacing(
+                                0, 0,
+                              ),
+                              null,
+                            ),
+                          ),
                         ),
-                        filled: false,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
 
@@ -649,22 +887,28 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _sectionLabel('Category:'),
+                          child: _sectionLabel(
+                            'Category:',
+                          ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding:
+                              const EdgeInsets.symmetric(
                             horizontal: 12,
                           ),
                           decoration: BoxDecoration(
                             color: _isDark
                                 ? AppColors.darkCard
                                 : AppColors.lightCard,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(20),
                           ),
-                          child: DropdownButtonHideUnderline(
+                          child:
+                              DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
                               value: _selectedCategory,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius:
+                                  BorderRadius.circular(14),
                               icon: Icon(
                                 Icons.keyboard_arrow_down_rounded,
                                 color: _textColor,
@@ -674,12 +918,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
-                              items: _categories.map((category) {
-                                return DropdownMenuItem(
-                                  value: category,
-                                  child: Text(category),
-                                );
-                              }).toList(),
+                              items: _categories.map(
+                                (category) {
+                                  return DropdownMenuItem(
+                                    value: category,
+                                    child: Text(category),
+                                  );
+                                },
+                              ).toList(),
                               onChanged: (value) {
                                 if (value != null) {
                                   setState(() {
@@ -697,7 +943,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
                     // NOTE COLORS
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: _noteColors.map((color) {
                         final selected =
                             _selectedColor.toARGB32() ==
@@ -710,7 +957,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                             });
                           },
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
+                            duration: const Duration(
+                              milliseconds: 180,
+                            ),
                             width: selected ? 25 : 21,
                             height: selected ? 25 : 21,
                             decoration: BoxDecoration(
@@ -768,8 +1017,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
     final month = _monthName(date.month);
-    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
-    final minute = date.minute.toString().padLeft(2, '0');
+    final hour =
+        date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute =
+        date.minute.toString().padLeft(2, '0');
     final period = date.hour >= 12 ? 'PM' : 'AM';
 
     return '$month $day, ${date.year} • $hour:$minute $period';
@@ -777,8 +1028,18 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   String _monthName(int month) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
 
     return months[month - 1];

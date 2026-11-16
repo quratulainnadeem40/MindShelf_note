@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
-import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 import 'package:mindshelf_note/theme/color_app.dart';
 
 import '../models/note_model.dart';
@@ -68,16 +67,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     const Color(0xFFDCE9F0),
   ];
 
-  final List<IconData> _icons = [
-    Icons.person_outline_rounded,
-    Icons.work_outline_rounded,
-    Icons.menu_book_rounded,
-    Icons.lightbulb_outline_rounded,
-    Icons.star_outline_rounded,
-    Icons.favorite_border_rounded,
-    Icons.folder_outlined,
-  ];
-
   bool get _isDark =>
       Theme.of(context).brightness == Brightness.dark;
 
@@ -135,6 +124,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         return Icons.work_outline_rounded;
       case 'study':
         return Icons.menu_book_rounded;
+      case 'education':
+        return Icons.school_rounded;
       case 'ideas':
         return Icons.lightbulb_outline_rounded;
       case 'important':
@@ -357,7 +348,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
     final categoryName = result.name.trim();
     final success = isEditing
-        ? await _service.renameCategory(oldName!, categoryName)
+        ? await _service.renameCategory(oldName, categoryName)
         : await _service.addCategory(categoryName);
 
     if (!mounted) return;
@@ -492,46 +483,116 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     await _loadData();
   }
 
+  Widget _headerIllustration() {
+    return Container(
+      width: 112,
+      height: 112,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9DCE5),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 17,
+            right: 18,
+            child: Transform.rotate(
+              angle: 0.12,
+              child: Container(
+                width: 58,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(
+                  Icons.notes_rounded,
+                  color: AppColors.primary.withValues(alpha: 0.45),
+                  size: 30,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 12,
+            left: 13,
+            child: Container(
+              width: 78,
+              height: 60,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(13),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.folder_special_rounded,
+                color: Colors.white,
+                size: 39,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _categoryCard(String category, int index) {
     final count = _countNotes(category);
     final color = _colorFor(index);
 
     return Material(
-      color: _cardColor,
-      borderRadius: BorderRadius.circular(16),
+      color: _isDark ? AppColors.darkCard : const Color(0xFFFFFCFC),
+      borderRadius: BorderRadius.circular(23),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(23),
         onTap: () => _openCategory(category),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
+          constraints: const BoxConstraints(minHeight: 88),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(23),
             border: Border.all(
               color: dividerColorForCard(),
               width: 0.7,
             ),
+            boxShadow: _isDark
+                ? []
+                : [
+                    BoxShadow(
+                      color: const Color(0xFFB65D78)
+                          .withValues(alpha: 0.055),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
           child: Row(
             children: [
               Container(
-                width: 39,
-                height: 39,
+                width: 57,
+                height: 57,
                 decoration: BoxDecoration(
                   color: color,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(19),
                 ),
                 child: Icon(
                   _iconFor(category),
                   color: const Color(0xFF98536A),
-                  size: 22,
+                  size: 27,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
+
               Expanded(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -540,16 +601,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _textColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 5),
                     Text(
                       '$count ${count == 1 ? 'note' : 'notes'}',
                       style: TextStyle(
                         color: _secondaryColor,
-                        fontSize: 11,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -557,15 +620,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
               IconButton(
                 onPressed: () => _showCategoryMenu(category),
-                visualDensity: VisualDensity.compact,
                 constraints: const BoxConstraints(
-                  minWidth: 32,
-                  minHeight: 36,
+                  minWidth: 40,
+                  minHeight: 40,
                 ),
                 icon: Icon(
-                  Icons.more_vert,
+                  Icons.more_vert_rounded,
                   color: _secondaryColor,
-                  size: 19,
+                  size: 21,
                 ),
               ),
             ],
@@ -583,7 +645,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: _isDark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : const Color(0xFFFFF4F3),
       body: SafeArea(
         child: _loading
             ? const Center(
@@ -592,44 +656,80 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 ),
               )
             : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // HEADER
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(17, 12, 17, 17),
+                    padding: const EdgeInsets.fromLTRB(
+                      20, 8, 20, 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          padding: EdgeInsets.zero,
-                          alignment: Alignment.centerLeft,
-                          icon: Icon(
-                            Icons.arrow_back,
-                            color: _textColor,
-                          ),
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () =>
+                                  Navigator.pop(context),
+                              icon: Icon(
+                                Icons.arrow_back_rounded,
+                                color: _textColor,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Categories',
-                          style: TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.6,
-                            color: _textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Organize your thoughts.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _secondaryColor,
-                          ),
+
+                        const SizedBox(height: 5),
+
+                        Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Categories',
+                                    style: TextStyle(
+                                      fontSize: 29,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.8,
+                                      color: _textColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    'Organize your thoughts.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: _secondaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 13),
+                                  Container(
+                                    width: 75,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            _headerIllustration(),
+                          ],
                         ),
                       ],
                     ),
                   ),
 
+                  // CATEGORY LIST
                   Expanded(
                     child: _categories.isEmpty
                         ? Center(
@@ -642,11 +742,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           )
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(
-                              17, 0, 17, 12,
+                              18, 8, 18, 15,
                             ),
                             itemCount: _categories.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 9),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               return _categoryCard(
                                 _categories[index],
@@ -656,29 +756,35 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           ),
                   ),
 
+                  // ADD CATEGORY BUTTON
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(17, 8, 17, 13),
+                    padding: const EdgeInsets.fromLTRB(
+                      20, 10, 20, 16,
+                    ),
                     child: SizedBox(
                       width: double.infinity,
-                      height: 48,
+                      height: 55,
                       child: ElevatedButton.icon(
                         onPressed: () => _showCategoryDialog(),
                         icon: const Icon(
                           Icons.add_rounded,
-                          size: 21,
+                          size: 24,
                         ),
                         label: const Text(
                           'Add Category',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
+                          elevation: 2,
+                          shadowColor: AppColors.primary
+                              .withValues(alpha: 0.2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                            borderRadius: BorderRadius.circular(30),
                           ),
                         ),
                       ),
