@@ -10,6 +10,9 @@ class NoteModel {
   DateTime createdAt;
   DateTime updatedAt;
 
+  // Optional image attached to the note
+  String? imagePath;
+
   NoteModel({
     required this.id,
     required this.title,
@@ -20,6 +23,7 @@ class NoteModel {
     this.isFavorite = false,
     required this.createdAt,
     required this.updatedAt,
+    this.imagePath,
   });
 
   factory NoteModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,7 @@ class NoteModel {
           DateTime.now(),
       updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ??
           DateTime.now(),
+      imagePath: json['imagePath'],
     );
   }
 
@@ -49,6 +54,7 @@ class NoteModel {
       'isFavorite': isFavorite,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'imagePath': imagePath,
     };
   }
 }

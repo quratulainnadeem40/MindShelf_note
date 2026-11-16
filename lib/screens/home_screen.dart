@@ -4,6 +4,7 @@ import 'package:mindshelf_note/theme/color_app.dart';
 
 import '../models/note_model.dart';
 import 'category_screen.dart';
+import 'favorite_screen.dart';
 import 'note_editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -405,11 +406,28 @@ class _HomeScreenState extends State<HomeScreen> {
               return;
             }
 
+            if (index == 2) {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FavoritesScreen(),
+                ),
+              );
+
+              if (!mounted) return;
+
+              setState(() {
+                _selectedIndex = 0;
+              });
+
+              return;
+            }
+
             setState(() {
               _selectedIndex = index;
             });
 
-            if (index != 0) {
+            if (index != 0 && index != 2) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(

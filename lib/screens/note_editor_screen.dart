@@ -1,7 +1,10 @@
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
 import 'package:mindshelf_note/theme/color_app.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/note_model.dart';
 
@@ -48,6 +51,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late bool _isFavorite;
 
   bool _isSaving = false;
+  final ImagePicker _imagePicker = ImagePicker();
+
+  String? _imagePath;
+  bool _isPickingImage = false;
 
   bool get _isEditing => widget.note != null;
 
@@ -56,6 +63,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     super.initState();
 
     final note = widget.note;
+    _imagePath = note?.imagePath;
 
     _titleController = TextEditingController(
       text: note?.title ?? '',
@@ -195,6 +203,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         colorValue: _selectedColor.toARGB32(),
         isPinned: _isPinned,
         isFavorite: _isFavorite,
+        imagePath: _imagePath,
         createdAt: oldNote?.createdAt ?? now,
         updatedAt: now,
       );
@@ -341,6 +350,128 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         fontWeight: FontWeight.w700,
         fontSize: 14,
       ),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      setState(() => _isPickingImage = true);
+
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+
+      if (pickedFile == null || !mounted) return;
+
+      final directory = await getApplicationDocumentsDirectory();
+
+      final extension = pickedFile.path.contains('.')
+          ? pickedFile.path.split('.').last
+          : 'jpg';
+
+      final fileName =
+          'note_${DateTime.now().microsecondsSinceEpoch}.$extension';
+
+      final savedFile = await File(pickedFile.path)
+          .copy('${directory.path}/$fileName');
+
+      if (!mounted) return;
+
+      setState(() {
+        _imagePath = savedFile.path;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Unable to select image: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingImage = false);
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _imagePath = null;
+    });
+  }
+
+  Widget _imageSection() {
+    final isDark = _isDark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('Note Image'),
+        const SizedBox(height: 10),
+        if (_imagePath != null && File(_imagePath!).existsSync())
+          ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Stack(
+              children: [
+                Image.file(
+                  File(_imagePath!),
+                  width: double.infinity,
+                  height: 190,
+                  fit: BoxFit.cover,
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    onPressed: _removeImage,
+                    style: IconButton.styleFrom(backgroundColor: Colors.white),
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          InkWell(
+            onTap: _isPickingImage ? null : _pickImage,
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              width: double.infinity,
+              height: 115,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkCard : const Color(0xFFFFF0F2),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_isPickingImage)
+                    const CircularProgressIndicator(color: AppColors.primary)
+                  else
+                    const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: AppColors.primary,
+                      size: 32,
+                    ),
+                  const SizedBox(height: 7),
+                  Text(
+                    _isPickingImage
+                        ? 'Loading image...'
+                        : 'Add Image from Gallery',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -506,6 +637,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
+
+                    const SizedBox(height: 25),
+
+                    // NOTE IMAGE
+                    _imageSection(),
 
                     const SizedBox(height: 25),
 
