@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:mindshelf_note/theme/color_app.dart';
 
+import '../models/note_model.dart';
+import 'category_screen.dart';
+import 'note_editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -384,7 +387,24 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (index) {
+          onTap: (index) async {
+            if (index == 1) {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CategoriesScreen(),
+                ),
+              );
+
+              if (!mounted) return;
+
+              setState(() {
+                _selectedIndex = 0;
+              });
+
+              return;
+            }
+
             setState(() {
               _selectedIndex = index;
             });
@@ -474,7 +494,46 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isDark,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: () async {
+        final model = note['model'];
+
+        if (model is! NoteModel) return;
+
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NoteEditorScreen(note: model),
+          ),
+        );
+
+        if (!mounted) return;
+
+        if (result == 'deleted') {
+          setState(() {
+            _notes.removeWhere(
+              (item) => item['model']?.id == model.id,
+            );
+          });
+        } else if (result is NoteModel) {
+          setState(() {
+            final index = _notes.indexWhere(
+              (item) => item['model']?.id == result.id,
+            );
+
+            if (index != -1) {
+              _notes[index] = {
+                'title': result.title,
+                'description': result.content,
+                'category': result.category,
+                'date': 'Today',
+                'color': Color(result.colorValue),
+                'icon': Icons.description_outlined,
+                'model': result,
+              };
+            }
+          });
+        }
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         margin: const EdgeInsets.only(bottom: 7),
@@ -568,12 +627,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _addNote() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Note Editor will be connected next.'),
+  Future<void> _addNote() async {
+    final result = await Navigator.push<NoteModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const NoteEditorScreen(),
       ),
     );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _notes.insert(0, {
+        'title': result.title,
+        'description': result.content,
+        'category': result.category,
+        'date': 'Today',
+        'color': Color(result.colorValue),
+        'icon': Icons.description_outlined,
+        'model': result,
+      });
+    });
   }
 
   void _openSettings() {
