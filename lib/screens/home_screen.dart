@@ -6,6 +6,7 @@ import '../models/note_model.dart';
 import 'category_screen.dart';
 import 'favorite_screen.dart';
 import 'note_editor_screen.dart';
+import 'setting_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -389,7 +390,18 @@ class _HomeScreenState extends State<HomeScreen> {
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (index) async {
+            // HOME
+            if (index == 0) {
+              setState(() {
+                _selectedIndex = 0;
+              });
+              return;
+            }
+
+            // CATEGORIES
             if (index == 1) {
+              setState(() => _selectedIndex = 1);
+
               await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -399,14 +411,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (!mounted) return;
 
-              setState(() {
-                _selectedIndex = 0;
-              });
-
+              setState(() => _selectedIndex = 0);
               return;
             }
 
+            // FAVORITES
             if (index == 2) {
+              setState(() => _selectedIndex = 2);
+
               await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -416,28 +428,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (!mounted) return;
 
-              setState(() {
-                _selectedIndex = 0;
-              });
-
+              setState(() => _selectedIndex = 0);
               return;
             }
 
-            setState(() {
-              _selectedIndex = index;
-            });
+            // SETTINGS
+            if (index == 3) {
+              setState(() => _selectedIndex = 3);
 
-            if (index != 0 && index != 2) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${_navigationLabels[index]} screen will be connected next.',
-                  ),
-                  duration: const Duration(seconds: 1),
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
                 ),
               );
+
+              if (!mounted) return;
+
+              setState(() => _selectedIndex = 0);
+              return;
             }
           },
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: surfaceColor,
+          selectedItemColor: AppColors.primary,
+          unselectedItemColor: secondaryColor,
+          elevation: 0,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),
@@ -460,13 +476,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  static const List<String> _navigationLabels = [
-    'Home',
-    'Categories',
-    'Favorites',
-    'Settings',
-  ];
 
   Widget _noteIcon(IconData icon, Color color, bool isDark) {
     return Container(
@@ -669,9 +678,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openSettings() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Settings screen will be connected next.'),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SettingsScreen(),
       ),
     );
   }

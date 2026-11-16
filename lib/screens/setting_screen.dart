@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/theme_provider.dart';
 import '../theme/color_app.dart';
+import 'category_screen.dart';
+import 'favorite_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -133,6 +135,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: _cardColor,
+          border: Border(
+            top: BorderSide(
+              color: _borderColor,
+              width: 0.7,
+            ),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: 3,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: _cardColor,
+          selectedItemColor: _accentColor,
+          unselectedItemColor: _secondaryColor,
+          elevation: 0,
+          selectedLabelStyle: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 11,
+          ),
+          onTap: (index) async {
+            if (index == 0) {
+              Navigator.popUntil(
+                context,
+                (route) => route.isFirst,
+              );
+              return;
+            }
+
+            if (index == 1) {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CategoriesScreen(),
+                ),
+              );
+              return;
+            }
+
+            if (index == 2) {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FavoritesScreen(),
+                ),
+              );
+              return;
+            }
+
+            if (index == 3) {
+              return;
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              label: 'Categories',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite_border_rounded),
+              label: 'Favorites',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_rounded),
+              label: 'Settings',
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -142,41 +221,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         Row(
           children: [
-            Container(
-              width: 43,
-              height: 43,
-              decoration: BoxDecoration(
-                color: _isDark
-                    ? AppColors.darkCard
-                    : AppColors.lightCard,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                Icons.settings_rounded,
-                color: _accentColor,
+            IconButton(
+              onPressed: () {
+                Navigator.maybePop(context);
+              },
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: _textColor,
                 size: 23,
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 35,
+                minHeight: 40,
+              ),
             ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Text(
+            const SizedBox(width: 8),
+            Text(
                 'Settings',
                 style: TextStyle(
-                  fontSize: 27,
+                  fontSize: 25,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.7,
                   color: _textColor,
                 ),
-              ),
             ),
           ],
         ),
-        const SizedBox(height: 9),
-        Text(
-          'Personalize your SimplyNote experience.',
-          style: TextStyle(
-            fontSize: 13,
-            color: _secondaryColor,
+        const SizedBox(height: 5),
+        Padding(
+          padding: const EdgeInsets.only(left: 43),
+          child: Text(
+            'Personalize your SimplyNote experience.',
+            style: TextStyle(
+              fontSize: 12,
+              color: _secondaryColor,
+            ),
           ),
         ),
       ],
