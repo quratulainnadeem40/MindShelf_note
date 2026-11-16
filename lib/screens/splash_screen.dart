@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mindshelf_note/screens/home_screen.dart';
 import 'package:mindshelf_note/theme/color_app.dart';
 
 
@@ -22,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => const _WelcomeHome(),
+            builder: (_) => const HomeScreen(),
           ),
         );
       }
@@ -62,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 25),
 
               const Text(
-                'SimplyNote',
+                'MindDesk_Note',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
