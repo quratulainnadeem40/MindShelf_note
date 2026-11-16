@@ -39,6 +39,10 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(17),
+          side: const BorderSide(
+            color: AppColors.lightDivider,
+            width: 0.5,
+          ),
         ),
       ),
 
@@ -193,6 +197,10 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(17),
+          side: const BorderSide(
+            color: AppColors.darkDivider,
+            width: 0.5,
+          ),
         ),
       ),
 

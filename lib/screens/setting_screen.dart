@@ -1,12 +1,16 @@
 
 import 'package:flutter/material.dart';
+import 'package:mindshelf_note/services/note_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../providers/theme_provider.dart';
 import '../theme/color_app.dart';
+import '../services/local_storage_service.dart' hide NoteServices;
+
 import 'category_screen.dart';
 import 'favorite_screen.dart';
+import 'trash_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,10 +20,17 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final NoteServices _noteService = NoteServices();
+
   String _defaultCategory = 'Personal';
   String _sortOrder = 'Last Edited';
   String _layout = 'List';
+
   int _noteColor = 0;
+
+  List<String> _categories = ['Personal'];
+
+  bool _isLoadingCategories = false;
 
   static const List<Color> _noteColors = [
     AppColors.notePink,
@@ -36,32 +47,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadPreferences();
   }
 
+  // LOAD PREFERENCES AND DYNAMIC CATEGORIES
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    final categories = await _noteService.getCategories();
 
     if (!mounted) return;
 
+    String defaultCategory =
+        prefs.getString('default_category') ?? 'Personal';
+
+    if (!categories.contains(defaultCategory)) {
+      defaultCategory = 'Personal';
+    }
+
     setState(() {
-      _defaultCategory =
-          prefs.getString('default_category') ?? 'Personal';
+      _categories = categories;
+
+      _defaultCategory = defaultCategory;
+
       _sortOrder =
           prefs.getString('notes_sort_order') ?? 'Last Edited';
-      _layout = prefs.getString('notes_layout') ?? 'List';
-      _noteColor = prefs.getInt('default_note_color') ?? 0;
+
+      _layout =
+          prefs.getString('notes_layout') ?? 'List';
+
+      _noteColor =
+          prefs.getInt('default_note_color') ?? 0;
     });
+
+    await prefs.setString(
+      'default_category',
+      defaultCategory,
+    );
   }
 
+  // SAVE STRING PREFERENCE
   Future<void> _saveString(String key, String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key, value);
   }
 
+  // SAVE DEFAULT COLOR
   Future<void> _saveColor(int index) async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setInt('default_note_color', index);
 
     if (!mounted) return;
-    setState(() => _noteColor = index);
+
+    setState(() {
+      _noteColor = index;
+    });
   }
 
   bool get _isDark =>
@@ -97,6 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _buildHeader(),
+
                   const SizedBox(height: 27),
 
                   _sectionTitle('APPEARANCE'),
@@ -104,21 +142,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildAppearanceCard(),
 
                   const SizedBox(height: 25),
+
                   _sectionTitle('PREFERENCES'),
                   const SizedBox(height: 12),
                   _buildPreferencesCard(),
 
                   const SizedBox(height: 25),
+
                   _sectionTitle('ORGANIZATION'),
                   const SizedBox(height: 12),
                   _buildOrganizationCard(),
 
                   const SizedBox(height: 25),
+
                   _sectionTitle('APPLICATION'),
                   const SizedBox(height: 12),
                   _buildApplicationCard(),
 
                   const SizedBox(height: 28),
+
                   Center(
                     child: Text(
                       'SimplyNote • Your thoughts, beautifully organized.',
@@ -135,6 +177,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+
+      // BOTTOM NAVIGATION
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: _cardColor,
@@ -215,6 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // HEADER
   Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,13 +283,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.7,
-                  color: _textColor,
-                ),
+              'Settings',
+              style: TextStyle(
+                fontSize: 25,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.7,
+                color: _textColor,
+              ),
             ),
           ],
         ),
@@ -263,6 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // SECTION TITLE
   Widget _sectionTitle(String title) {
     return Text(
       title,
@@ -275,6 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // APPEARANCE CARD
   Widget _buildAppearanceCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -321,6 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // THEME OPTION
   Widget _themeOption(
     ThemeMode mode,
     IconData icon,
@@ -384,6 +432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // PREFERENCES CARD
   Widget _buildPreferencesCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -397,32 +446,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _colorDot(_noteColors[_noteColor.clamp(
-                  0,
-                  _noteColors.length - 1,
-                )]),
+                _colorDot(
+                  _noteColors[_noteColor.clamp(
+                    0,
+                    _noteColors.length - 1,
+                  )],
+                ),
                 const SizedBox(width: 8),
-                Icon(Icons.chevron_right_rounded,
-                    color: _secondaryColor),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: _secondaryColor,
+                ),
               ],
             ),
             onTap: _showColorPicker,
           ),
+
           _divider(),
+
           _settingTile(
             icon: Icons.folder_outlined,
             title: 'Default Category',
             subtitle: _defaultCategory,
             onTap: _showCategoryPicker,
           ),
+
           _divider(),
+
           _settingTile(
             icon: Icons.sort_rounded,
             title: 'Sorting Preferences',
             subtitle: _sortOrder,
             onTap: _showSortPicker,
           ),
+
           _divider(),
+
           _settingTile(
             icon: Icons.view_agenda_outlined,
             title: 'Note Display Layout',
@@ -434,6 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ORGANIZATION CARD
   Widget _buildOrganizationCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -443,27 +503,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _settingTile(
             icon: Icons.folder_copy_outlined,
             title: 'Manage Categories',
-            subtitle: 'Organize your note categories',
-            onTap: () => _showInformation(
-              'Manage Categories',
-              'Category management will be connected to your Categories screen.',
-            ),
+            subtitle: 'Add, rename and organize categories',
+            onTap: _openManageCategories,
+            trailing: _isLoadingCategories
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Icon(
+                    Icons.chevron_right_rounded,
+                    color: _secondaryColor,
+                  ),
           ),
+
           _divider(),
+
           _settingTile(
             icon: Icons.delete_outline_rounded,
             title: 'Trash',
             subtitle: 'View deleted notes',
-            onTap: () => _showInformation(
-              'Trash',
-              'Your deleted notes will appear here once trash functionality is connected.',
-            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TrashScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
+  // OPEN CATEGORY SCREEN AND REFRESH
+  Future<void> _openManageCategories() async {
+    if (_isLoadingCategories) return;
+
+    setState(() {
+      _isLoadingCategories = true;
+    });
+
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const CategoriesScreen(),
+        ),
+      );
+
+      if (!mounted) return;
+
+      final categories = await _noteService.getCategories();
+
+      final prefs = await SharedPreferences.getInstance();
+
+      if (!mounted) return;
+
+      String updatedDefault = _defaultCategory;
+
+      if (!categories.contains(updatedDefault)) {
+        updatedDefault = 'Personal';
+      }
+
+      setState(() {
+        _categories = categories;
+        _defaultCategory = updatedDefault;
+      });
+
+      await prefs.setString(
+        'default_category',
+        updatedDefault,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to refresh categories: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
+    }
+  }
+
+  // APPLICATION CARD
   Widget _buildApplicationCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -479,7 +611,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'SimplyNote is your personal space for capturing ideas, organizing thoughts and keeping important notes together.',
             ),
           ),
+
           _divider(),
+
           _settingTile(
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Information',
@@ -494,6 +628,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // CARD HEADING
   Widget _cardHeading(
     IconData icon,
     String title,
@@ -530,6 +665,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // SETTING TILE
   Widget _settingTile({
     required IconData icon,
     required String title,
@@ -541,7 +677,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       contentPadding: const EdgeInsets.symmetric(vertical: 3),
       minLeadingWidth: 30,
       horizontalTitleGap: 12,
-      leading: Icon(icon, color: _accentColor, size: 21),
+      leading: Icon(
+        icon,
+        color: _accentColor,
+        size: 21,
+      ),
       title: Text(
         title,
         style: TextStyle(
@@ -569,6 +709,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // COLOR DOT
   Widget _colorDot(Color color) {
     return Container(
       width: 23,
@@ -581,14 +722,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // CARD DECORATION
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: _cardColor,
       borderRadius: BorderRadius.circular(17),
-      border: Border.all(color: _borderColor, width: 0.7),
+      border: Border.all(
+        color: _borderColor,
+        width: 0.7,
+      ),
     );
   }
 
+  // DIVIDER
   Widget _divider() {
     return Divider(
       height: 1,
@@ -597,6 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // COLOR PICKER
   Future<void> _showColorPicker() async {
     await showModalBottomSheet(
       context: context,
@@ -607,93 +754,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Default Note Color',
-                      style: TextStyle(
-                        color: _textColor,
-                        fontSize: 19,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    Wrap(
-                      spacing: 18,
-                      runSpacing: 18,
-                      children: List.generate(
-                        _noteColors.length,
-                        (index) {
-                          return InkWell(
-                            onTap: () async {
-                              await _saveColor(index);
-                              if (sheetContext.mounted) {
-                                Navigator.pop(sheetContext);
-                              }
-                            },
-                            child: Container(
-                              width: 43,
-                              height: 43,
-                              decoration: BoxDecoration(
-                                color: _noteColors[index],
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: _noteColor == index
-                                      ? _accentColor
-                                      : _borderColor,
-                                  width: _noteColor == index ? 3 : 1,
-                                ),
-                              ),
-                              child: _noteColor == index
-                                  ? const Icon(
-                                      Icons.check,
-                                      color: Color(0xFF501E2C),
-                                    )
-                                  : null,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                  ],
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Default Note Color',
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            );
-          },
+
+                const SizedBox(height: 22),
+
+                Wrap(
+                  spacing: 18,
+                  runSpacing: 18,
+                  children: List.generate(
+                    _noteColors.length,
+                    (index) {
+                      return InkWell(
+                        onTap: () async {
+                          await _saveColor(index);
+
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
+                          }
+                        },
+                        child: Container(
+                          width: 43,
+                          height: 43,
+                          decoration: BoxDecoration(
+                            color: _noteColors[index],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _noteColor == index
+                                  ? _accentColor
+                                  : _borderColor,
+                              width: _noteColor == index ? 3 : 1,
+                            ),
+                          ),
+                          child: _noteColor == index
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Color(0xFF501E2C),
+                                )
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
+  // DYNAMIC CATEGORY PICKER
   Future<void> _showCategoryPicker() async {
-    const categories = [
-      'Personal',
-      'Work',
-      'Study',
-      'Ideas',
-      'General',
-    ];
+    final categories = await _noteService.getCategories();
+
+    if (!mounted) return;
+
+    setState(() {
+      _categories = categories;
+
+      if (!_categories.contains(_defaultCategory)) {
+        _defaultCategory = 'Personal';
+      }
+    });
 
     final result = await _showChoiceSheet(
       'Default Category',
-      categories,
+      _categories,
       _defaultCategory,
     );
 
-    if (result != null) {
-      setState(() => _defaultCategory = result);
-      await _saveString('default_category', result);
+    if (result != null && mounted) {
+      setState(() {
+        _defaultCategory = result;
+      });
+
+      await _saveString(
+        'default_category',
+        result,
+      );
     }
   }
 
+  // SORT PICKER
   Future<void> _showSortPicker() async {
     const options = [
       'Last Edited',
@@ -707,14 +866,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _sortOrder,
     );
 
-    if (result != null) {
-      setState(() => _sortOrder = result);
-      await _saveString('notes_sort_order', result);
+    if (result != null && mounted) {
+      setState(() {
+        _sortOrder = result;
+      });
+
+      await _saveString(
+        'notes_sort_order',
+        result,
+      );
     }
   }
 
+  // LAYOUT PICKER
   Future<void> _showLayoutPicker() async {
-    const options = ['List', 'Grid'];
+    const options = [
+      'List',
+      'Grid',
+    ];
 
     final result = await _showChoiceSheet(
       'Note Display Layout',
@@ -722,12 +891,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _layout,
     );
 
-    if (result != null) {
-      setState(() => _layout = result);
-      await _saveString('notes_layout', result);
+    if (result != null && mounted) {
+      setState(() {
+        _layout = result;
+      });
+
+      await _saveString(
+        'notes_layout',
+        result,
+      );
     }
   }
 
+  // CHOICE BOTTOM SHEET
   Future<String?> _showChoiceSheet(
     String title,
     List<String> options,
@@ -757,18 +933,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
                 const SizedBox(height: 12),
+
                 ...options.map(
                   (option) => ListTile(
                     title: Text(
                       option,
-                      style: TextStyle(color: _textColor),
+                      style: TextStyle(
+                        color: _textColor,
+                      ),
                     ),
                     trailing: selected == option
-                        ? Icon(Icons.check_circle,
-                            color: _accentColor)
+                        ? Icon(
+                            Icons.check_circle,
+                            color: _accentColor,
+                          )
                         : null,
-                    onTap: () => Navigator.pop(context, option),
+                    onTap: () {
+                      Navigator.pop(context, option);
+                    },
                   ),
                 ),
               ],
@@ -779,7 +963,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showInformation(String title, String message) {
+  // INFORMATION DIALOG
+  void _showInformation(
+    String title,
+    String message,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

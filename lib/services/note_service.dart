@@ -32,6 +32,36 @@ class NoteServices {
     }
   }
 
+  // GET ACTIVE NOTES
+  Future<List<NoteModel>> getActiveNotes() async {
+    final notes = await getNotes();
+
+    return notes.where((note) => !note.isDeleted).toList();
+  }
+
+  // GET TRASH NOTES
+  Future<List<NoteModel>> getDeletedNotes() async {
+    final notes = await getNotes();
+
+    return notes.where((note) => note.isDeleted).toList();
+  }
+
+  // GET PINNED NOTES
+  Future<List<NoteModel>> getPinnedNotes() async {
+    final notes = await getActiveNotes();
+
+    return notes.where((note) => note.isPinned).toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
+  // GET FAVORITE NOTES
+  Future<List<NoteModel>> getFavoriteNotes() async {
+    final notes = await getActiveNotes();
+
+    return notes.where((note) => note.isFavorite).toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  }
+
   // SAVE NOTE
   Future<void> saveNote(NoteModel note) async {
     final notes = await getNotes();
@@ -46,10 +76,43 @@ class NoteServices {
     await _saveAll(notes);
   }
 
-  // DELETE NOTE
+  // SOFT DELETE NOTE
   Future<void> deleteNote(String id) async {
     final notes = await getNotes();
-    notes.removeWhere((n) => n.id == id);
+
+    final index = notes.indexWhere((note) => note.id == id);
+    if (index == -1) return;
+
+    notes[index].isDeleted = true;
+    notes[index].updatedAt = DateTime.now();
+
+    await _saveAll(notes);
+  }
+
+  // RESTORE NOTE
+  Future<void> restoreNote(String id) async {
+    final notes = await getNotes();
+
+    final index = notes.indexWhere((note) => note.id == id);
+    if (index == -1) return;
+
+    notes[index].isDeleted = false;
+    notes[index].updatedAt = DateTime.now();
+
+    await _saveAll(notes);
+  }
+
+  // PERMANENT DELETE
+  Future<void> permanentlyDeleteNote(String id) async {
+    final notes = await getNotes();
+    notes.removeWhere((note) => note.id == id);
+    await _saveAll(notes);
+  }
+
+  // EMPTY TRASH
+  Future<void> emptyTrash() async {
+    final notes = await getNotes();
+    notes.removeWhere((note) => note.isDeleted);
     await _saveAll(notes);
   }
 
@@ -72,6 +135,32 @@ class NoteServices {
 
     notes[index].isFavorite = !notes[index].isFavorite;
     notes[index].updatedAt = DateTime.now();
+    await _saveAll(notes);
+  }
+
+  // SET PIN STATUS
+  Future<void> setPinStatus(String id, bool value) async {
+    final notes = await getNotes();
+    final index = notes.indexWhere((n) => n.id == id);
+
+    if (index == -1) return;
+
+    notes[index].isPinned = value;
+    notes[index].updatedAt = DateTime.now();
+
+    await _saveAll(notes);
+  }
+
+  // SET FAVORITE STATUS
+  Future<void> setFavoriteStatus(String id, bool value) async {
+    final notes = await getNotes();
+    final index = notes.indexWhere((n) => n.id == id);
+
+    if (index == -1) return;
+
+    notes[index].isFavorite = value;
+    notes[index].updatedAt = DateTime.now();
+
     await _saveAll(notes);
   }
 

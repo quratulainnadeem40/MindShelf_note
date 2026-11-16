@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
+import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 import 'package:mindshelf_note/theme/color_app.dart';
 
 import '../models/note_model.dart';

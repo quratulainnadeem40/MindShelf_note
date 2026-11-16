@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mindshelf_note/models/note_model.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
+import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 import 'package:mindshelf_note/theme/color_app.dart';
 
 import 'note_editor_screen.dart';
@@ -27,32 +28,31 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     _loadFavorites();
   }
 
+ 
   Future<void> _loadFavorites() async {
-    final notes = await _noteService.getNotes();
+    final notes = await _noteService.getFavoriteNotes();
 
     if (!mounted) return;
 
     setState(() {
-      _favoriteNotes = notes.where((note) => note.isFavorite).toList()
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-
+      _favoriteNotes = notes;
       _isLoading = false;
     });
   }
 
   Future<void> _removeFavorite(NoteModel note) async {
-    await _noteService.toggleFavorite(note.id);
-    await _loadFavorites();
+  await _noteService.toggleFavorite(note.id);
+  await _loadFavorites();
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Removed from Favorites'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Removed from Favorites'),
+      duration: Duration(seconds: 1),
+    ),
+  );
+}
 
   Future<void> _openNote(NoteModel note) async {
     final result = await Navigator.push(

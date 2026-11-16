@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:image_picker/image_picker.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
+import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 import 'package:mindshelf_note/theme/color_app.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/note_model.dart';
 
@@ -29,7 +31,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late final TextEditingController _titleController;
   late final quill.QuillController _quillController;
 
-  final List<String> _categories = [
+  List<String> _categories = [
     'Personal',
     'Work',
     'Study',
@@ -37,13 +39,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     'Important',
   ];
 
+  // Same colors used in Settings Screen.
   final List<Color> _noteColors = [
-    const Color(0xFF712E3F),
-    const Color(0xFFE7A6B4),
-    const Color(0xFFF0C1B9),
-    const Color(0xFFEBCB91),
-    const Color(0xFFA8C5A1),
-    const Color(0xFF83B6CC),
+    AppColors.notePink,
+    AppColors.noteYellow,
+    AppColors.notePurple,
+    AppColors.noteGreen,
+    AppColors.noteBlue,
+    AppColors.notePeach,
   ];
 
   late String _selectedCategory;
@@ -58,8 +61,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   String? _imagePath;
   bool _isPickingImage = false;
-
-  TextSelection? _toolbarSelection;
 
   bool get _isEditing => widget.note != null;
 
@@ -104,11 +105,82 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _selectedCategory = note?.category ?? 'Ideas';
 
     _selectedColor = Color(
-      note?.colorValue ?? 0xFFE7A6B4,
+      note?.colorValue ?? AppColors.notePink.toARGB32(),
     );
 
     _isPinned = note?.isPinned ?? false;
     _isFavorite = note?.isFavorite ?? false;
+
+    _loadEditorPreferences();
+  }
+
+  // Load categories and default preferences from Settings.
+  Future<void> _loadEditorPreferences() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+
+      final savedCategories = await _noteService.getCategories();
+
+      final defaultCategory =
+          preferences.getString('default_category') ?? 'Personal';
+
+      final defaultColorIndex =
+          preferences.getInt('default_note_color') ?? 0;
+
+      final categories = List<String>.from(savedCategories);
+
+      if (categories.isEmpty) {
+        categories.addAll([
+          'Personal',
+          'Work',
+          'Study',
+          'Ideas',
+          'Important',
+        ]);
+      }
+
+      // Keep an existing note's category available while editing.
+      if (_isEditing &&
+          !categories.contains(widget.note!.category)) {
+        categories.add(widget.note!.category);
+      }
+
+      String category;
+
+      if (_isEditing) {
+        // Do not change the category of an existing note.
+        category = widget.note!.category;
+      } else if (categories.contains(defaultCategory)) {
+        // Apply Settings default category for new notes.
+        category = defaultCategory;
+      } else {
+        category = categories.first;
+      }
+
+      // Apply Settings default color only for new notes.
+      final Color selectedColor;
+
+      if (_isEditing) {
+        selectedColor = Color(widget.note!.colorValue);
+      } else {
+        final safeIndex = defaultColorIndex >= 0 &&
+                defaultColorIndex < _noteColors.length
+            ? defaultColorIndex
+            : 0;
+
+        selectedColor = _noteColors[safeIndex];
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _categories = categories;
+        _selectedCategory = category;
+        _selectedColor = selectedColor;
+      });
+    } catch (e) {
+      debugPrint('Unable to load editor preferences: $e');
+    }
   }
 
   @override
@@ -132,197 +204,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Color get _surfaceColor =>
       _isDark ? AppColors.darkCard : AppColors.lightSurface;
 
-  // Preserve editor selection before toolbar interaction.
-  void _captureToolbarSelection() {
-    final selection = _quillController.selection;
-
-    if (selection.isValid) {
-      _toolbarSelection = selection;
-    }
-  }
-
-  // Apply formatting to the saved selection.
-  void _applyAttributeToSavedSelection(
-    quill.Attribute attribute,
-  ) {
-    final selection =
-        _toolbarSelection ?? _quillController.selection;
-
-    if (!selection.isValid) return;
-
-    final start = selection.start;
-    final length = selection.end - selection.start;
-
-    if (length > 0) {
-      _quillController.formatText(
-        start,
-        length,
-        attribute,
-      );
-
-      // Restore selection after applying formatting.
-      _quillController.updateSelection(
-        selection,
-        quill.ChangeSource.local,
-      );
-    } else {
-      // Apply formatting to newly typed text when
-      // the cursor is not selecting any text.
-      _quillController.updateSelection(
-        selection,
-        quill.ChangeSource.local,
-      );
-
-      _quillController.formatSelection(attribute);
-    }
-
-    _toolbarSelection = _quillController.selection;
-  }
-
-  void _formatSelection(quill.Attribute attribute) {
-    _applyAttributeToSavedSelection(attribute);
-  }
-
-  void _insertList(bool numbered) {
-    _formatSelection(
-      numbered
-          ? quill.Attribute.ol
-          : quill.Attribute.ul,
-    );
-  }
-
-  void _setAlignment(quill.Attribute alignment) {
-    _formatSelection(alignment);
-  }
-
-  // Alignment options.
-  Future<void> _showAlignmentOptions() async {
-    _captureToolbarSelection();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Theme.of(context).cardTheme.color,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _alignmentOption(
-                  sheetContext,
-                  Icons.format_align_left,
-                  quill.Attribute.leftAlignment,
-                  'Left',
-                ),
-                _alignmentOption(
-                  sheetContext,
-                  Icons.format_align_center,
-                  quill.Attribute.centerAlignment,
-                  'Center',
-                ),
-                _alignmentOption(
-                  sheetContext,
-                  Icons.format_align_right,
-                  quill.Attribute.rightAlignment,
-                  'Right',
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _alignmentOption(
-    BuildContext sheetContext,
-    IconData icon,
-    quill.Attribute attribute,
-    String label,
-  ) {
-    return TextButton.icon(
-      onPressed: () {
-        _setAlignment(attribute);
-        Navigator.pop(sheetContext);
-      },
-      icon: Icon(icon, color: _textColor),
-      label: Text(
-        label,
-        style: TextStyle(color: _textColor),
-      ),
-    );
-  }
-
-  // Text color options.
-  Future<void> _showTextColors() async {
-    _captureToolbarSelection();
-
-    const colors = <Color>[
-      Color(0xFF292929),
-      Color(0xFF712E3F),
-      Color(0xFFD64B4B),
-      Color(0xFF2878C8),
-      Color(0xFF27845B),
-      Color(0xFF8A5AC2),
-      Color(0xFFE08A26),
-    ];
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Theme.of(context).cardTheme.color,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              spacing: 18,
-              runSpacing: 16,
-              children: colors.map((color) {
-                final hex =
-                    '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
-
-                return GestureDetector(
-                  onTap: () {
-                    final attribute =
-                        quill.Attribute.fromKeyValue(
-                      'color',
-                      hex,
-                    );
-
-                    if (attribute != null) {
-                      _applyAttributeToSavedSelection(
-                        attribute,
-                      );
-                    }
-
-                    Navigator.pop(sheetContext);
-                  },
-                  child: CircleAvatar(
-                    radius: 17,
-                    backgroundColor: color,
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   // Save note and rich-text Delta.
   Future<void> _saveNote() async {
     final title = _titleController.text.trim();
 
     final content =
         _quillController.document.toPlainText().trim();
+
     final contentDelta = jsonEncode(
       _quillController.document.toDelta().toJson(),
     );
@@ -478,30 +366,38 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     }
   }
 
-  // Formatting toolbar button.
-  Widget _formatButton(
-    IconData icon,
-    VoidCallback onTap, {
-    bool active = false,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => _captureToolbarSelection(),
-        onTap: onTap,
-        child: Container(
-          height: 42,
-          decoration: BoxDecoration(
-            color: active
-                ? _selectedColor.withValues(alpha: 0.18)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(
-            icon,
-            size: 20,
-            color: active ? _selectedColor : _textColor,
-          ),
+  Widget _richTextToolbar() {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _isDark
+              ? AppColors.darkDivider
+              : AppColors.lightDivider,
+        ),
+      ),
+      child: quill.QuillSimpleToolbar(
+        controller: _quillController,
+        config: const quill.QuillSimpleToolbarConfig(
+          multiRowsDisplay: true,
+          showFontFamily: false,
+          showFontSize: false,
+          showBoldButton: true,
+          showItalicButton: true,
+          showUnderLineButton: true,
+          showStrikeThrough: true,
+          showColorButton: true,
+          showBackgroundColorButton: true,
+          showClearFormat: true,
+          showAlignmentButtons: true,
+          showListNumbers: true,
+          showListBullets: true,
+          showUndo: true,
+          showRedo: true,
+          showQuote: true,
+          showLink: true,
         ),
       ),
     );
@@ -773,105 +669,27 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                     const SizedBox(height: 12),
 
                     // FORMATTING TOOLBAR
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _surfaceColor,
-                        borderRadius:
-                            BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          _formatButton(
-                            Icons.format_bold,
-                            () => _formatSelection(
-                              quill.Attribute.bold,
-                            ),
-                          ),
-                          _formatButton(
-                            Icons.format_italic,
-                            () => _formatSelection(
-                              quill.Attribute.italic,
-                            ),
-                          ),
-                          _formatButton(
-                            Icons.format_underline,
-                            () => _formatSelection(
-                              quill.Attribute.underline,
-                            ),
-                          ),
-                          _formatButton(
-                            Icons.format_list_bulleted,
-                            () => _insertList(false),
-                          ),
-                          _formatButton(
-                            Icons.format_list_numbered,
-                            () => _insertList(true),
-                          ),
-                          _formatButton(
-                            Icons.format_align_left,
-                            _showAlignmentOptions,
-                          ),
-                          _formatButton(
-                            Icons.format_color_text,
-                            _showTextColors,
-                          ),
-                        ],
-                      ),
-                    ),
+                    _richTextToolbar(),
 
                     const SizedBox(height: 15),
 
                     // RICH TEXT CONTENT
                     Container(
-                      constraints:
-                          const BoxConstraints(
-                        minHeight: 220,
-                      ),
                       width: double.infinity,
+                      constraints: const BoxConstraints(
+                        minHeight: 280,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 8,
+                      ),
                       child: quill.QuillEditor.basic(
                         controller: _quillController,
-                        config: quill.QuillEditorConfig(
-                          placeholder:
-                              'Write your ideas here...',
+                        config: const quill.QuillEditorConfig(
                           padding: EdgeInsets.zero,
                           scrollable: false,
-                          minHeight: 220,
-                          customStyles: quill.DefaultStyles(
-                            color: _textColor,
-                            bold: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            italic: const TextStyle(
-                              fontStyle: FontStyle.italic,
-                            ),
-                            underline: const TextStyle(
-                              decoration:
-                                  TextDecoration.underline,
-                            ),
-                            paragraph:
-                                quill.DefaultTextBlockStyle(
-                              TextStyle(
-                                color: _textColor,
-                                fontSize: 15,
-                                height: 1.65,
-                              ),
-                              const quill.HorizontalSpacing(
-                                0, 0,
-                              ),
-                              const quill.VerticalSpacing(
-                                0, 0,
-                              ),
-                              const quill.VerticalSpacing(
-                                0, 0,
-                              ),
-                              null,
-                            ),
-                          ),
+                          autoFocus: false,
+                          expands: false,
                         ),
                       ),
                     ),
@@ -906,7 +724,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                           child:
                               DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: _selectedCategory,
+                              value: _categories.contains(
+                                      _selectedCategory)
+                                  ? _selectedCategory
+                                  : _categories.first,
                               borderRadius:
                                   BorderRadius.circular(14),
                               icon: Icon(

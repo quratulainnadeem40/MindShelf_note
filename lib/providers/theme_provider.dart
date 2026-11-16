@@ -11,6 +11,11 @@ class ThemeProvider extends ChangeNotifier {
 
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
+  bool get isLightMode => _themeMode == ThemeMode.light;
+
+  bool get isSystemMode => _themeMode == ThemeMode.system;
+
+  // LOAD SAVED THEME
   Future<void> loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final savedTheme = prefs.getString(_themeKey);
@@ -19,18 +24,26 @@ class ThemeProvider extends ChangeNotifier {
       case 'light':
         _themeMode = ThemeMode.light;
         break;
+
       case 'dark':
         _themeMode = ThemeMode.dark;
         break;
+
+      case 'system':
       default:
         _themeMode = ThemeMode.system;
+        break;
     }
 
     notifyListeners();
   }
 
+  // CHANGE THEME
   Future<void> setTheme(ThemeMode mode) async {
+    if (_themeMode == mode) return;
+
     _themeMode = mode;
+    notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -40,15 +53,16 @@ class ThemeProvider extends ChangeNotifier {
       case ThemeMode.light:
         value = 'light';
         break;
+
       case ThemeMode.dark:
         value = 'dark';
         break;
+
       case ThemeMode.system:
         value = 'system';
         break;
     }
 
     await prefs.setString(_themeKey, value);
-    notifyListeners();
   }
 }
