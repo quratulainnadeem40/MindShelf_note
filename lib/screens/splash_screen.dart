@@ -53,10 +53,14 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.edit_note_rounded,
-                  size: 76,
-                  color: Colors.white,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: Image.asset(
+                    'assets/icons/app_logo.png',
+                    width: 112,
+                    height: 112,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
 

@@ -1,11 +1,21 @@
 
 import 'package:flutter/material.dart';
 import 'package:mindshelf_note/services/local_storage_service.dart';
-import 'package:mindshelf_note/services/note_service.dart';
+import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 import 'package:mindshelf_note/theme/color_app.dart';
 
 import '../models/note_model.dart';
 import 'note_editor_screen.dart';
+
+class _CategoryDialogResult {
+  final String name;
+  final String iconKey;
+
+  const _CategoryDialogResult({
+    required this.name,
+    required this.iconKey,
+  });
+}
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -21,6 +31,32 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   List<NoteModel> _notes = [];
 
   bool _loading = true;
+
+  // Stable icon keys are saved in SharedPreferences by NoteServices.
+  final Map<String, IconData> _availableCategoryIcons = {
+    'person': Icons.person_outline_rounded,
+    'work': Icons.work_outline_rounded,
+    'study': Icons.menu_book_rounded,
+    'ideas': Icons.lightbulb_outline_rounded,
+    'important': Icons.star_outline_rounded,
+    'favorite': Icons.favorite_border_rounded,
+    'home': Icons.home_outlined,
+    'shopping': Icons.shopping_bag_outlined,
+    'fitness': Icons.fitness_center_rounded,
+    'food': Icons.restaurant_outlined,
+    'travel': Icons.flight_outlined,
+    'music': Icons.music_note_rounded,
+    'gaming': Icons.sports_esports_rounded,
+    'camera': Icons.camera_alt_outlined,
+    'pets': Icons.pets_outlined,
+    'school': Icons.school_outlined,
+    'wallet': Icons.account_balance_wallet_outlined,
+    'event': Icons.event_outlined,
+    'code': Icons.code_rounded,
+    'folder': Icons.folder_outlined,
+  };
+
+  Map<String, String> _categoryIconKeys = {};
 
   final List<Color> _colors = [
     const Color(0xFFF5DCE3),
@@ -68,12 +104,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Future<void> _loadData() async {
     final categories = await _service.getCategories();
     final notes = await _service.getNotes();
+    final categoryIconKeys = await _service.getCategoryIcons();
 
     if (!mounted) return;
 
     setState(() {
       _categories = categories;
       _notes = notes;
+      _categoryIconKeys = categoryIconKeys;
       _loading = false;
     });
   }
@@ -85,6 +123,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   IconData _iconFor(String category) {
+    final savedKey = _categoryIconKeys[category];
+    if (savedKey != null && _availableCategoryIcons.containsKey(savedKey)) {
+      return _availableCategoryIcons[savedKey]!;
+    }
+
     switch (category.toLowerCase()) {
       case 'personal':
         return Icons.person_outline_rounded;
@@ -108,69 +151,220 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Future<void> _showCategoryDialog({
     String? oldName,
   }) async {
-    final controller = TextEditingController(
-      text: oldName ?? '',
-    );
-
+    final controller = TextEditingController(text: oldName ?? '');
     final isEditing = oldName != null;
+    String selectedIconKey = isEditing
+        ? (_categoryIconKeys[oldName] ?? 'folder')
+        : 'folder';
 
-    final result = await showDialog<String>(
+    final result = await showDialog<_CategoryDialogResult>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: _cardColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            isEditing ? 'Rename Category' : 'Add Category',
-            style: TextStyle(
-              color: _textColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 25,
-            decoration: InputDecoration(
-              hintText: 'Category name',
-              counterText: '',
-              filled: true,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  controller.text.trim(),
-                );
-              },
-              child: Text(isEditing ? 'Update' : 'Add'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: _cardColor,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+              titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
+              contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 8),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              title: Text(
+                isEditing ? 'Rename Category' : 'Add Category',
+                style: TextStyle(
+                  color: _textColor,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Create a category to organize your notes.',
+                      style: TextStyle(
+                        color: _secondaryColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Category name',
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      maxLength: 25,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        hintText: 'Enter category name',
+                        counterText: '',
+                        filled: true,
+                        fillColor: Theme.of(context).scaffoldBackgroundColor,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 13,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          borderSide: BorderSide(color: _dividerColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          borderSide: BorderSide(color: _dividerColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.4,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Choose an icon',
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 11),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _availableCategoryIcons.entries.map((entry) {
+                        final iconKey = entry.key;
+                        final icon = entry.value;
+                        final isSelected = selectedIconKey == iconKey;
+                        return InkWell(
+                          onTap: () {
+                            setDialogState(() => selectedIconKey = iconKey);
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 160),
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.primary.withValues(alpha: 0.14)
+                                  : Theme.of(context).scaffoldBackgroundColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : _dividerColor,
+                                width: isSelected ? 1.5 : 0.8,
+                              ),
+                            ),
+                            child: Icon(
+                              icon,
+                              size: 21,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : _secondaryColor,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 15),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 14,
+                          color: _secondaryColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Selected icon will appear on this category.',
+                            style: TextStyle(
+                              color: _secondaryColor,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: _secondaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = controller.text.trim();
+                    if (name.isEmpty) return;
+                    Navigator.pop(
+                      dialogContext,
+                      _CategoryDialogResult(
+                        name: name,
+                        iconKey: selectedIconKey,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 11,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    isEditing ? 'Update' : 'Add Category',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
     controller.dispose();
 
-    if (result == null || result.trim().isEmpty) return;
+    if (result == null || result.name.trim().isEmpty) return;
 
+    final categoryName = result.name.trim();
     final success = isEditing
-        ? await _service.renameCategory(oldName!, result)
-        : await _service.addCategory(result);
+        ? await _service.renameCategory(oldName!, categoryName)
+        : await _service.addCategory(categoryName);
 
     if (!mounted) return;
 
     if (success) {
+      await _service.saveCategoryIcon(categoryName, result.iconKey);
       await _loadData();
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -515,7 +709,7 @@ class CategoryNotesScreen extends StatefulWidget {
 }
 
 class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
-  final NoteService _service = NoteService();
+  final NoteServices _service = NoteServices();
 
   List<NoteModel> _notes = [];
   bool _loading = true;

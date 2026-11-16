@@ -19,7 +19,7 @@ class NoteEditorScreen extends StatefulWidget {
 }
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
-  final NoteService _noteService = NoteService();
+  final NoteServices _noteService = NoteServices();
 
   late final TextEditingController _titleController;
   late final TextEditingController _contentController;
