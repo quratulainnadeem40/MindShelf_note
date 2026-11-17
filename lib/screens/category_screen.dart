@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,13 +37,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   bool _loading = true;
 
-  static const Color _gold = Color(0xFFE2B85F);
-  static const Color _goldDark = Color(0xFF98753B);
-  static const Color _darkBackground = Color(0xFF121212);
-  static const Color _darkCard = Color(0xFF27282B);
-  static const Color _lightText = Color(0xFFFFF9ED);
-  static const Color _mutedText = Color(0xFFC5BDAF);
-
   static const String _pinnedKey = 'mindshelf_pinned_categories';
 
   final Map<String, IconData> _availableCategoryIcons = {
@@ -68,26 +62,37 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     'folder': Icons.folder_outlined,
   };
 
+  // THEME COLORS
+
   bool get _isDark =>
       Theme.of(context).brightness == Brightness.dark;
 
-  Color get _iconColor =>
+  Color get _accentColor =>
       _isDark ? AppColors.darkPrimary : AppColors.primary;
 
   Color get _backgroundColor =>
-      _isDark ? _darkBackground : const Color(0xFFF7F4ED);
+      _isDark ? AppColors.darkBackground : AppColors.lightBackground;
 
   Color get _cardColor =>
-      _isDark ? _darkCard : Colors.white;
+      _isDark ? AppColors.darkCard : AppColors.lightSurface;
 
   Color get _textColor =>
-      _isDark ? _lightText : const Color(0xFF25221D);
+      _isDark ? AppColors.darkText : AppColors.lightText;
 
   Color get _secondaryColor =>
-      _isDark ? _mutedText : const Color(0xFF77716A);
+      _isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText;
 
   Color get _borderColor =>
-      _isDark ? const Color(0xFF383838) : const Color(0xFFE8E0D2);
+      _isDark ? AppColors.darkDivider : AppColors.lightDivider;
+
+  Color get _iconBackground =>
+      _isDark ? AppColors.darkPink : AppColors.lightPink;
+
+  Color get _buttonColor =>
+      _isDark ? AppColors.darkPrimary : AppColors.primary;
+
+  Color get _buttonTextColor =>
+      _isDark ? AppColors.darkBackground : AppColors.white;
 
   List<String> get _displayCategories {
     final result = [..._categories];
@@ -187,14 +192,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  // PIN / UNPIN CATEGORY
-  // Stored locally using SharedPreferences.
+  // PIN / UNPIN
 
   Future<void> _toggleCategoryPin(String category) async {
     final prefs = await SharedPreferences.getInstance();
 
     final updated = {..._pinnedCategories};
-
     final isPinned = updated.contains(category);
 
     if (isPinned) {
@@ -217,16 +220,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isPinned
-              ? 'Category unpinned'
-              : 'Category pinned',
+          isPinned ? 'Category unpinned' : 'Category pinned',
         ),
         duration: const Duration(seconds: 1),
       ),
     );
   }
 
-  // ADD / RENAME CATEGORY DIALOG
+  // ADD / RENAME CATEGORY
 
   Future<void> _showCategoryDialog({
     String? oldName,
@@ -277,21 +278,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       controller: controller,
                       autofocus: true,
                       maxLength: 25,
-                      textCapitalization:
-                          TextCapitalization.words,
+                      textCapitalization: TextCapitalization.words,
                       style: TextStyle(color: _textColor),
                       decoration: InputDecoration(
                         hintText: 'Category name',
                         counterText: '',
                         filled: true,
                         fillColor: _backgroundColor,
+                        hintStyle: TextStyle(color: _secondaryColor),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(13),
+                          borderSide: BorderSide(color: _borderColor),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(13),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(13),
-                          borderSide: const BorderSide(
-                            color: _gold,
+                          borderSide: BorderSide(
+                            color: _accentColor,
                             width: 1.5,
                           ),
                         ),
@@ -315,8 +320,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       runSpacing: 10,
                       children: _availableCategoryIcons.entries.map(
                         (entry) {
-                          final selected =
-                              selectedIconKey == entry.key;
+                          final selected = selectedIconKey == entry.key;
 
                           return InkWell(
                             onTap: () {
@@ -324,28 +328,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 selectedIconKey = entry.key;
                               });
                             },
-                            borderRadius:
-                                BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12),
                             child: Container(
                               width: 43,
                               height: 43,
                               decoration: BoxDecoration(
                                 color: selected
-                                    ? _gold.withValues(alpha: 0.2)
-                                    : _backgroundColor,
-                                borderRadius:
-                                    BorderRadius.circular(12),
+                                    ? _accentColor.withValues(alpha: 0.16)
+                                    : _iconBackground,
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: selected
-                                      ? _gold
+                                      ? _accentColor
                                       : _borderColor,
+                                  width: selected ? 1.5 : 0.8,
                                 ),
                               ),
                               child: Icon(
                                 entry.value,
-                                color: selected
-                                    ? _iconColor
-                                    : _secondaryColor,
+                                color: _accentColor,
                                 size: 21,
                               ),
                             ),
@@ -381,8 +382,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _gold,
-                    foregroundColor: const Color(0xFF292016),
+                    backgroundColor: _buttonColor,
+                    foregroundColor: _buttonTextColor,
                   ),
                   child: Text(
                     isEditing ? 'Update' : 'Add Category',
@@ -490,16 +491,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             if (noteCount > 0 && hasDestination)
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text(
+                child: Text(
                   'Keep Notes',
-                  style: TextStyle(color: _gold),
+                  style: TextStyle(color: _accentColor),
                 ),
               ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(
-                dialogContext,
-                true,
-              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade600,
                 foregroundColor: Colors.white,
@@ -547,41 +545,27 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  // THREE DOT POPUP MENU
+  // THREE DOT MENU
 
   Future<void> _showCategoryMenu(String category) async {
     final isPinned = _pinnedCategories.contains(category);
 
     final choice = await showMenu<String>(
       context: context,
-      color: _isDark
-          ? const Color(0xFF353535)
-          : Colors.white,
+      color: _cardColor,
       elevation: 12,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(17),
       ),
-      position: const RelativeRect.fromLTRB(
-        120,
-        180,
-        15,
-        0,
-      ),
+      position: const RelativeRect.fromLTRB(120, 180, 15, 0),
       items: [
         PopupMenuItem(
           value: 'rename',
           child: Row(
             children: [
-              const Icon(
-                Icons.edit_outlined,
-                color: _gold,
-                size: 21,
-              ),
+              Icon(Icons.edit_outlined, color: _accentColor, size: 21),
               const SizedBox(width: 12),
-              Text(
-                'Rename',
-                style: TextStyle(color: _textColor),
-              ),
+              Text('Rename', style: TextStyle(color: _textColor)),
             ],
           ),
         ),
@@ -593,7 +577,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 isPinned
                     ? Icons.push_pin_rounded
                     : Icons.push_pin_outlined,
-                color: _gold,
+                color: _accentColor,
                 size: 21,
               ),
               const SizedBox(width: 12),
@@ -604,17 +588,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ],
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'delete',
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.delete_outline_rounded,
                 color: Colors.redAccent,
                 size: 21,
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Delete',
                 style: TextStyle(color: Colors.redAccent),
               ),
@@ -630,11 +614,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       case 'rename':
         await _showCategoryDialog(oldName: category);
         break;
-
       case 'pin':
         await _toggleCategoryPin(category);
         break;
-
       case 'delete':
         await _deleteCategory(category);
         break;
@@ -647,9 +629,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CategoryNotesScreen(
-          category: category,
-        ),
+        builder: (_) => CategoryNotesScreen(category: category),
       ),
     );
 
@@ -662,6 +642,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Widget _categoryCard(String category) {
     final count = _countNotes(category);
+    final isPinned = _pinnedCategories.contains(category);
 
     return Material(
       color: _cardColor,
@@ -679,33 +660,49 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             color: _cardColor,
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: _borderColor.withValues(alpha: 0.5),
+              color: _borderColor.withValues(alpha: 0.7),
               width: 0.8,
             ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // GOLDEN CATEGORY ICON
+              // THEME MATCHING CATEGORY ICON
+
               Container(
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
-                  color: _isDark
-                      ? const Color(0xFF98753B)
-                      : const Color(0xFFE2B85F),
+                  color: _iconBackground,
                   borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: _accentColor.withValues(alpha: 0.22),
+                  ),
                 ),
-                child: Icon(
-                  _iconFor(category),
-                  size: 43,
-                  color: _iconColor,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      _iconFor(category),
+                      size: 43,
+                      color: _accentColor,
+                    ),
+                    if (isPinned)
+                      Positioned(
+                        top: 5,
+                        right: 5,
+                        child: Icon(
+                          Icons.push_pin_rounded,
+                          color: _accentColor,
+                          size: 16,
+                        ),
+                      ),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 13),
 
-              // CATEGORY NAME
               Text(
                 category,
                 maxLines: 1,
@@ -720,7 +717,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
               const SizedBox(height: 7),
 
-              // NOTES COUNT
               Text(
                 '$count ${count == 1 ? 'note' : 'notes'}',
                 style: TextStyle(
@@ -732,7 +728,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
               const SizedBox(height: 5),
 
-              // THREE DOT MENU
               SizedBox(
                 height: 27,
                 child: IconButton(
@@ -762,25 +757,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       borderRadius: BorderRadius.circular(23),
       child: CustomPaint(
         painter: _DashedBorderPainter(
-          color: _gold,
+          color: _accentColor,
           radius: 23,
         ),
         child: Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.all(12),
-          child: const Column(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.add_rounded,
-                color: _gold,
+                color: _accentColor,
                 size: 48,
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
-                '+ Add New',
+                'Add New',
                 style: TextStyle(
-                  color: _gold,
+                  color: _accentColor,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -815,7 +810,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 height: 53,
                 child: Icon(
                   Icons.arrow_back_rounded,
-                  color: _gold,
+                  color: _accentColor,
                   size: 27,
                 ),
               ),
@@ -852,7 +847,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   width: 95,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _gold,
+                    color: _accentColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -883,9 +878,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _gold,
-            foregroundColor: const Color(0xFF282016),
-            elevation: 3,
+            backgroundColor: _buttonColor,
+            foregroundColor: _buttonTextColor,
+            elevation: 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(35),
             ),
@@ -905,9 +900,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(
-                  color: _gold,
+                  color: _accentColor,
                 ),
               )
             : Column(
@@ -918,15 +913,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
-
                         final columns = width >= 650 ? 3 : 2;
 
                         return GridView.builder(
                           padding: const EdgeInsets.fromLTRB(
-                            20,
-                            0,
-                            20,
-                            18,
+                            20, 0, 20, 18,
                           ),
                           physics: const BouncingScrollPhysics(),
                           gridDelegate:
@@ -942,9 +933,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               return _addNewCard();
                             }
 
-                            return _categoryCard(
-                              categories[index],
-                            );
+                            return _categoryCard(categories[index]);
                           },
                         );
                       },
@@ -991,10 +980,7 @@ class _DashedBorderPainter extends CustomPainter {
       double distance = 0;
 
       while (distance < metric.length) {
-        final end = (distance + 8).clamp(
-          0.0,
-          metric.length,
-        );
+        final end = (distance + 8).clamp(0.0, metric.length);
 
         canvas.drawPath(
           metric.extractPath(distance, end),
@@ -1032,8 +1018,7 @@ class CategoryNotesScreen extends StatefulWidget {
       _CategoryNotesScreenState();
 }
 
-class _CategoryNotesScreenState
-    extends State<CategoryNotesScreen> {
+class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
   final NoteServices _service = NoteServices();
 
   List<NoteModel> _notes = [];
@@ -1043,14 +1028,21 @@ class _CategoryNotesScreenState
       Theme.of(context).brightness == Brightness.dark;
 
   Color get _textColor =>
-      _isDark
-          ? const Color(0xFFFFF9ED)
-          : const Color(0xFF25221D);
+      _isDark ? AppColors.darkText : AppColors.lightText;
 
   Color get _secondaryColor =>
       _isDark
-          ? const Color(0xFFC5BDAF)
-          : const Color(0xFF77716A);
+          ? AppColors.darkSecondaryText
+          : AppColors.lightSecondaryText;
+
+  Color get _accentColor =>
+      _isDark ? AppColors.darkPrimary : AppColors.primary;
+
+  Color get _backgroundColor =>
+      _isDark ? AppColors.darkBackground : AppColors.lightBackground;
+
+  Color get _cardColor =>
+      _isDark ? AppColors.darkCard : AppColors.lightSurface;
 
   @override
   void initState() {
@@ -1105,16 +1097,10 @@ class _CategoryNotesScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isDark
-          ? const Color(0xFF121212)
-          : const Color(0xFFF7F4ED),
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: _isDark
-            ? const Color(0xFF121212)
-            : const Color(0xFFF7F4ED),
-        iconTheme: const IconThemeData(
-          color: Color(0xFFE2B85F),
-        ),
+        backgroundColor: _backgroundColor,
+        iconTheme: IconThemeData(color: _accentColor),
         title: Text(
           widget.category,
           style: TextStyle(
@@ -1124,9 +1110,9 @@ class _CategoryNotesScreenState
         ),
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
-                color: Color(0xFFE2B85F),
+                color: _accentColor,
               ),
             )
           : _notes.isEmpty
@@ -1165,6 +1151,7 @@ class _CategoryNotesScreenState
                     final note = _notes[index];
 
                     return Card(
+                      color: _cardColor,
                       margin: const EdgeInsets.only(bottom: 10),
                       child: ListTile(
                         onTap: () => _editNote(note),
@@ -1174,12 +1161,11 @@ class _CategoryNotesScreenState
                           decoration: BoxDecoration(
                             color: Color(note.colorValue)
                                 .withValues(alpha: 0.35),
-                            borderRadius:
-                                BorderRadius.circular(11),
+                            borderRadius: BorderRadius.circular(11),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.description_outlined,
-                            color: Color(0xFFE2B85F),
+                            color: _accentColor,
                           ),
                         ),
                         title: Text(
@@ -1199,9 +1185,9 @@ class _CategoryNotesScreenState
                             color: _secondaryColor,
                           ),
                         ),
-                        trailing: const Icon(
+                        trailing: Icon(
                           Icons.chevron_right_rounded,
-                          color: Color(0xFFE2B85F),
+                          color: _accentColor,
                         ),
                       ),
                     );

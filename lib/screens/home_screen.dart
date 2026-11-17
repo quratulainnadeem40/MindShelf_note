@@ -975,68 +975,95 @@ class _HomeScreenState extends State<HomeScreen> {
   // BOTTOM NAVIGATION
 
   Widget _buildBottomNavigation() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _isDark
-            ? const Color(0xFF1D1D1D)
-            : Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(26),
-        ),
-        border: Border(
-          top: BorderSide(
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 65,
+        margin: const EdgeInsets.fromLTRB(18, 5, 18, 10),
+        decoration: BoxDecoration(
+          color: _isDark
+              ? const Color(0xFF242424)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
             color: _isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black12,
+                ? const Color(0xFF383838).withValues(alpha: 0.4)
+                : const Color(0xFFE8E0D2).withValues(alpha: 0.4),
           ),
+        ),
+        child: Row(
+          children: [
+            _homeNavItem(
+              icon: Icons.home_rounded,
+              label: 'Home',
+              index: 0,
+            ),
+            _homeNavItem(
+              icon: Icons.grid_view_rounded,
+              label: 'Categories',
+              index: 1,
+            ),
+            _homeNavItem(
+              icon: Icons.favorite_rounded,
+              label: 'Favorites',
+              index: 2,
+            ),
+            _homeNavItem(
+              icon: Icons.settings_rounded,
+              label: 'Settings',
+              index: 3,
+            ),
+          ],
         ),
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.only(
-            top: 8,
-            bottom: 5,
-          ),
-          child: BottomNavigationBar(
-            currentIndex: 0,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedItemColor: _gold,
-            unselectedItemColor: _secondaryTextColor,
-            selectedLabelStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 11,
-            ),
-            onTap: (index) {
-              if (index == 1) {
-                _openCategories();
-              } else if (index == 2) {
-                _openFavorites();
-              } else if (index == 3) {
-                _openSettings();
-              }
-            },
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded),
-                label: 'Home',
+    );
+  }
+
+  // NAV ITEM
+  Widget _homeNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final selected = index == 0;
+
+    final unselectedColor = _isDark
+        ? Colors.white54
+        : Colors.grey.shade600;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          if (index == 1) {
+            _openCategories();
+          } else if (index == 2) {
+            _openFavorites();
+          } else if (index == 3) {
+            _openSettings();
+          }
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          height: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: selected ? _gold : unselectedColor,
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.folder_outlined),
-                label: 'Categories',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.favorite_border_rounded),
-                label: 'Favorites',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                label: 'Settings',
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: selected
+                      ? FontWeight.w800
+                      : FontWeight.w500,
+                  color: selected ? _gold : unselectedColor,
+                ),
               ),
             ],
           ),

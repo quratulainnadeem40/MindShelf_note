@@ -186,86 +186,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
 
-      // BOTTOM NAVIGATION
-      bottomNavigationBar: Container(
+      bottomNavigationBar: _buildBottomNavigation(),
+    );
+  }
+
+  // BOTTOM NAVIGATION
+  Widget _buildBottomNavigation() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 65,
+        margin: const EdgeInsets.fromLTRB(18, 5, 18, 10),
         decoration: BoxDecoration(
-          color: _cardColor,
-          border: Border(
-            top: BorderSide(
-              color: _borderColor,
-              width: 0.7,
-            ),
+          color: _isDark
+              ? const Color(0xFF242424)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isDark
+                ? const Color(0xFF383838).withValues(alpha: 0.4)
+                : const Color(0xFFE8E0D2).withValues(alpha: 0.4),
           ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: 3,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: _cardColor,
-          selectedItemColor: _accentColor,
-          unselectedItemColor: _secondaryColor,
-          elevation: 0,
-
-          selectedLabelStyle: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 11,
-          ),
-
-          onTap: (index) async {
-            if (index == 0) {
-              Navigator.popUntil(
-                context,
-                (route) => route.isFirst,
-              );
-              return;
-            }
-
-            if (index == 1) {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CategoriesScreen(),
-                ),
-              );
-              return;
-            }
-
-            if (index == 2) {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const FavoritesScreen(),
-                ),
-              );
-              return;
-            }
-
-            if (index == 3) {
-              return;
-            }
-          },
-
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
+        child: Row(
+          children: [
+            _settingsNavItem(
+              icon: Icons.home_rounded,
               label: 'Home',
+              index: 0,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.folder_outlined),
+            _settingsNavItem(
+              icon: Icons.grid_view_rounded,
               label: 'Categories',
+              index: 1,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border_rounded),
+            _settingsNavItem(
+              icon: Icons.favorite_rounded,
               label: 'Favorites',
+              index: 2,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_rounded),
+            _settingsNavItem(
+              icon: Icons.settings_rounded,
               label: 'Settings',
+              index: 3,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // NAV ITEM
+  Widget _settingsNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final selected = index == 3;
+
+    final unselectedColor = _isDark
+        ? Colors.white54
+        : Colors.grey.shade600;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () async {
+          if (index == 0) {
+            Navigator.popUntil(
+              context,
+              (route) => route.isFirst,
+            );
+          } else if (index == 1) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CategoriesScreen(),
+              ),
+            );
+          } else if (index == 2) {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const FavoritesScreen(),
+              ),
+            );
+          } else if (index == 3) {
+            return;
+          }
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          height: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: selected ? _gold : unselectedColor,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: selected
+                      ? FontWeight.w800
+                      : FontWeight.w500,
+                  color: selected ? _gold : unselectedColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
