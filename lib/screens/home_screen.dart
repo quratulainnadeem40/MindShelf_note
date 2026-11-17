@@ -30,16 +30,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String _sortOrder = 'Last Edited';
   String _layout = 'List';
 
-  bool get _isDark =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   Color get _mainTextColor =>
       _isDark ? AppColors.darkText : AppColors.lightText;
 
   Color get _secondaryTextColor =>
-      _isDark
-          ? AppColors.darkSecondaryText
-          : AppColors.lightSecondaryText;
+      _isDark ? AppColors.darkSecondaryText : AppColors.lightSecondaryText;
 
   Color get _primaryColor =>
       _isDark ? AppColors.darkPrimary : AppColors.primary;
@@ -81,9 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load notes: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Unable to load notes: $e')));
     }
   }
 
@@ -103,9 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       case 'Alphabetically':
         notes.sort(
-          (a, b) => a.title.toLowerCase().compareTo(
-                b.title.toLowerCase(),
-              ),
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
         );
         break;
 
@@ -129,9 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openNote({NoteModel? note}) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => NoteEditorScreen(note: note),
-      ),
+      MaterialPageRoute(builder: (_) => NoteEditorScreen(note: note)),
     );
 
     if (!mounted) return;
@@ -141,9 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openSettings() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const SettingsScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
     );
 
     if (!mounted) return;
@@ -153,9 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openCategories() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const CategoriesScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CategoriesScreen()),
     );
 
     if (!mounted) return;
@@ -165,9 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openFavorites() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const FavoritesScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const FavoritesScreen()),
     );
 
     if (!mounted) return;
@@ -179,9 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return Padding(
@@ -192,17 +176,12 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Text(
                 'Sort Notes',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              ...[
-                'Last Edited',
-                'Date Created',
-                'Alphabetically',
-              ].map((option) {
+              ...['Last Edited', 'Date Created', 'Alphabetically'].map((
+                option,
+              ) {
                 return RadioListTile<String>(
                   title: Text(option),
                   value: option,
@@ -326,20 +305,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNoteCard(NoteModel note) {
+  Widget _buildNoteCard(NoteModel note, {bool isGrid = false}) {
     final noteColor = _noteColor(note);
 
     return GestureDetector(
       onTap: () => _openNote(note: note),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(bottom: isGrid ? 0 : 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: isGrid ? 12 : 14,
+          vertical: isGrid ? 10 : 12,
+        ),
         decoration: BoxDecoration(
           color: noteColor.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: noteColor.withValues(alpha: 0.65),
-          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: noteColor.withValues(alpha: 0.65)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,82 +332,105 @@ class _HomeScreenState extends State<HomeScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: isGrid ? 14 : 16,
                       fontWeight: FontWeight.bold,
                       color: _mainTextColor,
                     ),
                   ),
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
-                  ),
-                  padding: EdgeInsets.zero,
-                  tooltip: note.isPinned ? 'Unpin Note' : 'Pin Note',
-                  onPressed: () => _toggleNotePin(note),
-                  icon: Icon(
-                    note.isPinned
+                if (isGrid) ...[
+                  _buildNoteAction(
+                    icon: note.isPinned
                         ? Icons.push_pin_rounded
                         : Icons.push_pin_outlined,
-                    size: 20,
-                    color: note.isPinned
-                        ? _primaryColor
-                        : _secondaryTextColor,
+                    color: note.isPinned ? _primaryColor : _secondaryTextColor,
+                    tooltip: note.isPinned ? 'Unpin Note' : 'Pin Note',
+                    onPressed: () => _toggleNotePin(note),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => _toggleNoteFavorite(note),
-                  tooltip: note.isFavorite
-                      ? 'Remove from Favorites'
-                      : 'Add to Favorites',
-                  visualDensity: VisualDensity.standard,
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  splashRadius: 25,
-                  icon: Icon(
-                    note.isFavorite
+                  _buildNoteAction(
+                    icon: note.isFavorite
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    size: 21,
                     color: note.isFavorite
                         ? _primaryColor
                         : _secondaryTextColor,
+                    tooltip: note.isFavorite
+                        ? 'Remove from Favorites'
+                        : 'Add to Favorites',
+                    onPressed: () => _toggleNoteFavorite(note),
                   ),
-                ),
+                ] else ...[
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
+                    padding: EdgeInsets.zero,
+                    tooltip: note.isPinned ? 'Unpin Note' : 'Pin Note',
+                    onPressed: () => _toggleNotePin(note),
+                    icon: Icon(
+                      note.isPinned
+                          ? Icons.push_pin_rounded
+                          : Icons.push_pin_outlined,
+                      size: 20,
+                      color: note.isPinned
+                          ? _primaryColor
+                          : _secondaryTextColor,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _toggleNoteFavorite(note),
+                    tooltip: note.isFavorite
+                        ? 'Remove from Favorites'
+                        : 'Add to Favorites',
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(
+                      minWidth: 34,
+                      minHeight: 34,
+                    ),
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      note.isFavorite
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 21,
+                      color: note.isFavorite
+                          ? _primaryColor
+                          : _secondaryTextColor,
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 9),
+            SizedBox(height: isGrid ? 5 : 6),
             Text(
               note.content.isEmpty ? 'No additional text' : note.content,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: isGrid ? 11 : 13,
                 color: _secondaryTextColor,
-                height: 1.4,
+                height: 1.35,
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: isGrid ? 8 : 10),
+            if (isGrid) const Spacer(),
             Row(
               children: [
                 Icon(
                   Icons.folder_outlined,
-                  size: 15,
+                  size: isGrid ? 12 : 15,
                   color: _secondaryTextColor,
                 ),
-                const SizedBox(width: 5),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     note.category,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: isGrid ? 10 : 12,
                       color: _secondaryTextColor,
                     ),
                   ),
@@ -435,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   _formatDate(note.updatedAt),
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: isGrid ? 9 : 11,
                     color: _secondaryTextColor,
                   ),
                 ),
@@ -447,12 +450,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildNoteAction({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 25,
+      height: 28,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 16, color: color),
+      ),
+    );
+  }
+
   Widget _buildNotesLayout(List<NoteModel> notes) {
     if (notes.isEmpty) {
-      return _buildEmptyState(
-        'No notes here',
-        'Create a note to get started.',
-      );
+      return _buildEmptyState('No notes here', 'Create a note to get started.');
     }
 
     if (_layout == 'Grid') {
@@ -463,18 +482,16 @@ class _HomeScreenState extends State<HomeScreen> {
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           crossAxisSpacing: 12,
-          mainAxisSpacing: 0,
-          childAspectRatio: 1.12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 145,
         ),
         itemBuilder: (context, index) {
-          return _buildNoteCard(notes[index]);
+          return _buildNoteCard(notes[index], isGrid: true);
         },
       );
     }
 
-    return Column(
-      children: notes.map(_buildNoteCard).toList(),
-    );
+    return Column(children: notes.map((note) => _buildNoteCard(note)).toList());
   }
 
   Widget _buildEmptyState(String title, String subtitle) {
@@ -500,10 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 5),
             Text(
               subtitle,
-              style: TextStyle(
-                color: _secondaryTextColor,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: _secondaryTextColor, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ],
@@ -520,11 +534,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            Icon(
-              Icons.push_pin_rounded,
-              size: 18,
-              color: _primaryColor,
-            ),
+            Icon(Icons.push_pin_rounded, size: 18, color: _primaryColor),
             const SizedBox(width: 7),
             Text(
               'Pinned Notes',
@@ -537,15 +547,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const Spacer(),
             Text(
               '${_pinnedNotes.length}',
-              style: TextStyle(
-                color: _secondaryTextColor,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: _secondaryTextColor, fontSize: 13),
             ),
           ],
         ),
         const SizedBox(height: 14),
-        _buildNotesLayout(_pinnedNotes),
+        Column(children: _pinnedNotes.map(_buildNoteCard).toList()),
         const SizedBox(height: 12),
       ],
     );
@@ -569,10 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 5),
               Text(
                 '${_notes.length} Notes  •  ${_notes.where((n) => n.isPinned).length} Pinned',
-                style: TextStyle(
-                  color: _secondaryTextColor,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: _secondaryTextColor, fontSize: 13),
               ),
             ],
           ),
@@ -682,12 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
             false,
             _openFavorites,
           ),
-          _navItem(
-            Icons.settings_outlined,
-            'Settings',
-            false,
-            _openSettings,
-          ),
+          _navItem(Icons.settings_outlined, 'Settings', false, _openSettings),
         ],
       ),
     );
@@ -758,7 +757,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               : 'Try searching with another word.',
                         )
                       else
-                        _buildNotesLayout(regularNotes),
+                        _buildNotesLayout(
+                          _searchQuery.isEmpty ? regularNotes : _sortedNotes,
+                        ),
                     ],
                   ),
                 ),
@@ -774,14 +775,9 @@ class _HomeScreenState extends State<HomeScreen> {
         highlightElevation: 6,
         shape: const CircleBorder(),
         clipBehavior: Clip.antiAlias,
-        child: const Icon(
-          Icons.add_rounded,
-          size: 30,
-          color: Colors.white,
-        ),
+        child: const Icon(Icons.add_rounded, size: 30, color: Colors.white),
       ),
-      floatingActionButtonLocation:
-          FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _buildBottomNavigation(),
     );
   }

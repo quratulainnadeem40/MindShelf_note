@@ -1,8 +1,9 @@
 
 import 'package:flutter/material.dart';
-import 'package:mindshelf_note/services/note_service.dart';
+import 'package:mindshelf_note/screens/privacy_police_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mindshelf_note/services/note_service.dart';
 
 import '../providers/theme_provider.dart';
 import '../theme/color_app.dart';
@@ -11,6 +12,7 @@ import '../services/local_storage_service.dart' hide NoteServices;
 import 'category_screen.dart';
 import 'favorite_screen.dart';
 import 'trash_screen.dart';
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -49,37 +51,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // LOAD PREFERENCES AND DYNAMIC CATEGORIES
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final categories = await _noteService.getCategories();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final categories = await _noteService.getCategories();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    String defaultCategory =
-        prefs.getString('default_category') ?? 'Personal';
+      String defaultCategory =
+          prefs.getString('default_category') ?? 'Personal';
 
-    if (!categories.contains(defaultCategory)) {
-      defaultCategory = 'Personal';
+      if (!categories.contains(defaultCategory)) {
+        defaultCategory = 'Personal';
+      }
+
+      setState(() {
+        _categories = categories;
+        _defaultCategory = defaultCategory;
+
+        _sortOrder =
+            prefs.getString('notes_sort_order') ?? 'Last Edited';
+
+        _layout =
+            prefs.getString('notes_layout') ?? 'List';
+
+        _noteColor =
+            prefs.getInt('default_note_color') ?? 0;
+      });
+
+      await prefs.setString(
+        'default_category',
+        defaultCategory,
+      );
+    } catch (e) {
+      debugPrint('Settings loading error: $e');
     }
-
-    setState(() {
-      _categories = categories;
-
-      _defaultCategory = defaultCategory;
-
-      _sortOrder =
-          prefs.getString('notes_sort_order') ?? 'Last Edited';
-
-      _layout =
-          prefs.getString('notes_layout') ?? 'List';
-
-      _noteColor =
-          prefs.getInt('default_note_color') ?? 0;
-    });
-
-    await prefs.setString(
-      'default_category',
-      defaultCategory,
-    );
   }
 
   // SAVE STRING PREFERENCE
@@ -101,6 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  // THEME COLORS
   bool get _isDark =>
       Theme.of(context).brightness == Brightness.dark;
 
@@ -125,6 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -163,7 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   Center(
                     child: Text(
-                      'SimplyNote • Your thoughts, beautifully organized.',
+                      'Shelf Note • A beautiful space for your thoughts.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,
@@ -196,13 +203,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           selectedItemColor: _accentColor,
           unselectedItemColor: _secondaryColor,
           elevation: 0,
+
           selectedLabelStyle: const TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
+
           unselectedLabelStyle: const TextStyle(
             fontSize: 11,
           ),
+
           onTap: (index) async {
             if (index == 0) {
               Navigator.popUntil(
@@ -236,6 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               return;
             }
           },
+
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),
@@ -281,7 +292,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 minHeight: 40,
               ),
             ),
+
             const SizedBox(width: 8),
+
             Text(
               'Settings',
               style: TextStyle(
@@ -293,11 +306,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+
         const SizedBox(height: 5),
+
         Padding(
           padding: const EdgeInsets.only(left: 43),
           child: Text(
-            'Personalize your SimplyNote experience.',
+            'Personalize your Shelf Note experience.',
             style: TextStyle(
               fontSize: 12,
               color: _secondaryColor,
@@ -332,9 +347,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _cardHeading(
             Icons.palette_outlined,
             'Theme Appearance',
-            'Choose how SimplyNote looks',
+            'Choose how Shelf Note looks',
           ),
+
           const SizedBox(height: 17),
+
           Consumer<ThemeProvider>(
             builder: (context, provider, child) {
               return Row(
@@ -345,14 +362,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Light',
                     provider,
                   ),
+
                   const SizedBox(width: 9),
+
                   _themeOption(
                     ThemeMode.dark,
                     Icons.dark_mode_rounded,
                     'Dark',
                     provider,
                   ),
+
                   const SizedBox(width: 9),
+
                   _themeOption(
                     ThemeMode.system,
                     Icons.settings_suggest_rounded,
@@ -383,22 +404,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(13),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+
           padding: const EdgeInsets.symmetric(
             vertical: 15,
             horizontal: 4,
           ),
+
           decoration: BoxDecoration(
             color: selected
                 ? _accentColor.withValues(alpha: 0.12)
                 : (_isDark
                     ? AppColors.darkBackground
                     : AppColors.lightBackground),
+
             borderRadius: BorderRadius.circular(13),
+
             border: Border.all(
               color: selected ? _accentColor : _borderColor,
               width: selected ? 1.5 : 0.8,
             ),
           ),
+
           child: Column(
             children: [
               Icon(
@@ -406,7 +432,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 size: 22,
                 color: selected ? _accentColor : _secondaryColor,
               ),
+
               const SizedBox(height: 8),
+
               Text(
                 label,
                 style: TextStyle(
@@ -416,7 +444,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: selected ? _accentColor : _textColor,
                 ),
               ),
+
               const SizedBox(height: 5),
+
               if (selected)
                 Icon(
                   Icons.check_circle_rounded,
@@ -443,6 +473,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.color_lens_outlined,
             title: 'Default Note Color',
             subtitle: 'Choose your preferred note color',
+
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -452,13 +483,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _noteColors.length - 1,
                   )],
                 ),
+
                 const SizedBox(width: 8),
+
                 Icon(
                   Icons.chevron_right_rounded,
                   color: _secondaryColor,
                 ),
               ],
             ),
+
             onTap: _showColorPicker,
           ),
 
@@ -504,7 +538,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.folder_copy_outlined,
             title: 'Manage Categories',
             subtitle: 'Add, rename and organize categories',
+
             onTap: _openManageCategories,
+
             trailing: _isLoadingCategories
                 ? const SizedBox(
                     width: 18,
@@ -525,6 +561,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.delete_outline_rounded,
             title: 'Trash',
             subtitle: 'View deleted notes',
+
             onTap: () {
               Navigator.push(
                 context,
@@ -558,7 +595,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       final categories = await _noteService.getCategories();
-
       final prefs = await SharedPreferences.getInstance();
 
       if (!mounted) return;
@@ -604,11 +640,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _settingTile(
             icon: Icons.info_outline_rounded,
-            title: 'About SimplyNote',
+            title: 'About Shelf Note',
             subtitle: 'Version 1.0.0',
+
             onTap: () => _showInformation(
-              'About SimplyNote',
-              'SimplyNote is your personal space for capturing ideas, organizing thoughts and keeping important notes together.',
+              'About Shelf Note',
+              'Shelf Note is your personal space for capturing ideas, '
+                  'organizing thoughts and keeping important notes together.',
             ),
           ),
 
@@ -616,14 +654,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _settingTile(
             icon: Icons.privacy_tip_outlined,
-            title: 'Privacy Information',
-            subtitle: 'Your privacy matters',
-            onTap: () => _showInformation(
-              'Privacy Information',
-              'Add your application privacy policy here before publishing.',
-            ),
+            title: 'Privacy Policy',
+            subtitle: 'Read how Shelf Note handles your data',
+
+            onTap: _openPrivacyPolicy,
           ),
         ],
+      ),
+    );
+  }
+
+  // OPEN PRIVACY POLICY
+  void _openPrivacyPolicy() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PrivacyPolicyScreen(),
       ),
     );
   }
@@ -636,8 +682,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     return Row(
       children: [
-        Icon(icon, color: _accentColor, size: 21),
+        Icon(
+          icon,
+          color: _accentColor,
+          size: 21,
+        ),
+
         const SizedBox(width: 10),
+
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,7 +702,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: _textColor,
                 ),
               ),
+
               const SizedBox(height: 3),
+
               Text(
                 subtitle,
                 style: TextStyle(
@@ -677,11 +731,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       contentPadding: const EdgeInsets.symmetric(vertical: 3),
       minLeadingWidth: 30,
       horizontalTitleGap: 12,
+
       leading: Icon(
         icon,
         color: _accentColor,
         size: 21,
       ),
+
       title: Text(
         title,
         style: TextStyle(
@@ -690,6 +746,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: _textColor,
         ),
       ),
+
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 3),
         child: Text(
@@ -700,11 +757,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
+
       trailing: trailing ??
           Icon(
             Icons.chevron_right_rounded,
             color: _secondaryColor,
           ),
+
       onTap: onTap,
     );
   }
@@ -717,7 +776,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: _borderColor),
+        border: Border.all(
+          color: _borderColor,
+        ),
       ),
     );
   }
@@ -748,18 +809,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await showModalBottomSheet(
       context: context,
       backgroundColor: _cardColor,
+
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(22),
         ),
       ),
+
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(22),
+
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
                 Text(
                   'Default Note Color',
@@ -775,6 +840,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Wrap(
                   spacing: 18,
                   runSpacing: 18,
+
                   children: List.generate(
                     _noteColors.length,
                     (index) {
@@ -786,12 +852,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Navigator.pop(sheetContext);
                           }
                         },
+
                         child: Container(
                           width: 43,
                           height: 43,
+
                           decoration: BoxDecoration(
                             color: _noteColors[index],
                             shape: BoxShape.circle,
+
                             border: Border.all(
                               color: _noteColor == index
                                   ? _accentColor
@@ -799,6 +868,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               width: _noteColor == index ? 3 : 1,
                             ),
                           ),
+
                           child: _noteColor == index
                               ? const Icon(
                                   Icons.check,
@@ -912,18 +982,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return showModalBottomSheet<String>(
       context: context,
       backgroundColor: _cardColor,
+
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(22),
         ),
       ),
+
       builder: (context) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
+
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
                 Text(
                   title,
@@ -944,12 +1018,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: _textColor,
                       ),
                     ),
+
                     trailing: selected == option
                         ? Icon(
                             Icons.check_circle,
                             color: _accentColor,
                           )
                         : null,
+
                     onTap: () {
                       Navigator.pop(context, option);
                     },
@@ -970,16 +1046,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     showDialog(
       context: context,
+
       builder: (context) => AlertDialog(
         backgroundColor: _cardColor,
+
         title: Text(
           title,
-          style: TextStyle(color: _textColor),
+          style: TextStyle(
+            color: _textColor,
+          ),
         ),
+
         content: Text(
           message,
-          style: TextStyle(color: _secondaryColor),
+          style: TextStyle(
+            color: _secondaryColor,
+          ),
         ),
+
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
