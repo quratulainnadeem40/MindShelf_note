@@ -1,4 +1,5 @@
-package com.example.mindshelf_note
+
+package com.innovexa.ShelfNote
 
 import io.flutter.embedding.android.FlutterActivity
 

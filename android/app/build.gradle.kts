@@ -18,7 +18,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.innovexa.mindshelf_note"
+    namespace = "com.innovexa.ShelfNote"
+
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.innovexa.mindshelf_note"
+        applicationId = "com.innovexa.ShelfNote"
 
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -47,9 +48,11 @@ android {
 
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
+
             storeFile = file(
                 keystoreProperties["storeFile"] as String
             )
+
             storePassword = keystoreProperties["storePassword"] as String
         }
     }
