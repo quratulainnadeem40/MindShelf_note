@@ -473,6 +473,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           ),
           padding: const EdgeInsets.fromLTRB(8, 24, 8, 20),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // GOLD ICON BACKGROUND
@@ -721,7 +722,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
-                        childAspectRatio: 0.88,
+                        mainAxisExtent: 145,
                       ),
                       itemCount: _categories.length + 1,
                       itemBuilder: (context, index) {
