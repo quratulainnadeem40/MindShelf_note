@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:mindshelf_note/services/note_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -656,7 +655,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNavigation() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         boxShadow: [
@@ -706,7 +705,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -739,7 +738,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onRefresh: _loadHomeData,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 25),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -767,11 +766,22 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openNote(),
+        tooltip: 'Create Note',
+        heroTag: 'home_add_note_button',
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        elevation: 3,
-        child: const Icon(Icons.add_rounded, size: 28),
+        elevation: 4,
+        highlightElevation: 6,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: const Icon(
+          Icons.add_rounded,
+          size: 30,
+          color: Colors.white,
+        ),
       ),
+      floatingActionButtonLocation:
+          FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: _buildBottomNavigation(),
     );
   }
