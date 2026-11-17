@@ -241,7 +241,7 @@ class NoteServices {
   ) async {
     final updatedName = newName.trim();
 
-    if (updatedName.isEmpty || oldName == 'Personal') {
+    if (updatedName.isEmpty) {
       return false;
     }
 
@@ -285,36 +285,50 @@ class NoteServices {
   }
 
   // DELETE CATEGORY
-  Future<bool> deleteCategory(String name) async {
-    if (name == 'Personal') return false;
-
+  Future<bool> deleteCategory(
+    String name, {
+    required bool deleteNotes,
+  }) async {
     final categories = await getCategories();
+
     if (!categories.contains(name)) return false;
 
-    categories.remove(name);
-
-    if (!categories.contains('Personal')) {
-      categories.insert(0, 'Personal');
-    }
+    final remainingCategories = categories
+        .where((category) => category != name)
+        .toList();
 
     final notes = await getNotes();
 
-    for (final note in notes) {
-      if (note.category == name) {
-        note.category = 'Personal';
-        note.updatedAt = DateTime.now();
+    if (!deleteNotes &&
+        remainingCategories.isEmpty &&
+        notes.any((note) => note.category == name)) {
+      return false;
+    }
+
+    if (deleteNotes) {
+      notes.removeWhere((note) => note.category == name);
+    } else {
+      final destination = remainingCategories.first;
+
+      for (final note in notes) {
+        if (note.category == name) {
+          note.category = destination;
+          note.updatedAt = DateTime.now();
+        }
       }
     }
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_categoryKey, categories);
+    await prefs.setStringList(_categoryKey, remainingCategories);
     await _saveAll(notes);
 
-    // Remove the deleted category's saved icon.
     final icons = await getCategoryIcons();
-    if (icons.remove(name) != null) {
-      await prefs.setString(_categoryIconsKey, jsonEncode(icons));
-    }
+    icons.remove(name);
+
+    await prefs.setString(
+      _categoryIconsKey,
+      jsonEncode(icons),
+    );
 
     return true;
   }

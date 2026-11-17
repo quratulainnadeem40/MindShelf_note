@@ -1,10 +1,11 @@
-
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:mindshelf_note/services/local_storage_service.dart';
 import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
-import 'package:mindshelf_note/theme/color_app.dart';
 
 import '../models/note_model.dart';
+import '../theme/color_app.dart';
 import 'note_editor_screen.dart';
 
 class _CategoryDialogResult {
@@ -31,16 +32,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   List<NoteModel> _notes = [];
 
   Map<String, String> _categoryIconKeys = {};
+  Set<String> _pinnedCategories = {};
 
   bool _loading = true;
 
-  // GOLD LUXE COLORS
   static const Color _gold = Color(0xFFE2B85F);
   static const Color _goldDark = Color(0xFF98753B);
   static const Color _darkBackground = Color(0xFF121212);
   static const Color _darkCard = Color(0xFF27282B);
   static const Color _lightText = Color(0xFFFFF9ED);
   static const Color _mutedText = Color(0xFFC5BDAF);
+
+  static const String _pinnedKey = 'mindshelf_pinned_categories';
 
   final Map<String, IconData> _availableCategoryIcons = {
     'person': Icons.person_outline_rounded,
@@ -68,6 +71,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   bool get _isDark =>
       Theme.of(context).brightness == Brightness.dark;
 
+  Color get _iconColor =>
+      _isDark ? AppColors.darkPrimary : AppColors.primary;
+
   Color get _backgroundColor =>
       _isDark ? _darkBackground : const Color(0xFFF7F4ED);
 
@@ -83,18 +89,42 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Color get _borderColor =>
       _isDark ? const Color(0xFF383838) : const Color(0xFFE8E0D2);
 
+  List<String> get _displayCategories {
+    final result = [..._categories];
+
+    result.sort((a, b) {
+      final aPinned = _pinnedCategories.contains(a);
+      final bPinned = _pinnedCategories.contains(b);
+
+      if (aPinned == bPinned) return 0;
+
+      return aPinned ? -1 : 1;
+    });
+
+    return result;
+  }
+
   @override
   void initState() {
     super.initState();
     _loadData();
   }
 
-  // LOAD SAVED CATEGORIES AND NOTES
+  // LOAD DATA
+
   Future<void> _loadData() async {
     try {
-      final categories = await _service.getCategories();
-      final notes = await _service.getNotes();
-      final icons = await _service.getCategoryIcons();
+      final results = await Future.wait([
+        _service.getCategories(),
+        _service.getNotes(),
+        _service.getCategoryIcons(),
+        SharedPreferences.getInstance(),
+      ]);
+
+      final categories = results[0] as List<String>;
+      final notes = results[1] as List<NoteModel>;
+      final icons = results[2] as Map<String, String>;
+      final prefs = results[3] as SharedPreferences;
 
       if (!mounted) return;
 
@@ -102,6 +132,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         _categories = categories;
         _notes = notes;
         _categoryIconKeys = icons;
+        _pinnedCategories =
+            (prefs.getStringList(_pinnedKey) ?? []).toSet();
+        _pinnedCategories.retainAll(categories);
         _loading = false;
       });
     } catch (e) {
@@ -110,12 +143,15 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       setState(() => _loading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load categories: $e')),
+        SnackBar(
+          content: Text('Unable to load categories: $e'),
+        ),
       );
     }
   }
 
-  // NOTES COUNT
+  // CATEGORY NOTES COUNT
+
   int _countNotes(String category) {
     return _notes.where(
       (note) => note.category == category,
@@ -123,10 +159,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   // CATEGORY ICON
+
   IconData _iconFor(String category) {
     final key = _categoryIconKeys[category];
 
-    if (key != null && _availableCategoryIcons.containsKey(key)) {
+    if (key != null &&
+        _availableCategoryIcons.containsKey(key)) {
       return _availableCategoryIcons[key]!;
     }
 
@@ -136,23 +174,66 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       case 'work':
         return Icons.work_outline_rounded;
       case 'study':
-        return Icons.menu_book_rounded;
       case 'education':
-        return Icons.school_rounded;
+        return Icons.menu_book_rounded;
       case 'ideas':
         return Icons.lightbulb_outline_rounded;
       case 'important':
         return Icons.star_outline_rounded;
+      case 'home':
+        return Icons.home_outlined;
       default:
         return Icons.folder_outlined;
     }
   }
 
-  // ADD / EDIT CATEGORY DIALOG
+  // PIN / UNPIN CATEGORY
+  // Stored locally using SharedPreferences.
+
+  Future<void> _toggleCategoryPin(String category) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final updated = {..._pinnedCategories};
+
+    final isPinned = updated.contains(category);
+
+    if (isPinned) {
+      updated.remove(category);
+    } else {
+      updated.add(category);
+    }
+
+    await prefs.setStringList(
+      _pinnedKey,
+      updated.toList(),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _pinnedCategories = updated;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isPinned
+              ? 'Category unpinned'
+              : 'Category pinned',
+        ),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  // ADD / RENAME CATEGORY DIALOG
+
   Future<void> _showCategoryDialog({
     String? oldName,
   }) async {
-    final controller = TextEditingController(text: oldName ?? '');
+    final controller = TextEditingController(
+      text: oldName ?? '',
+    );
 
     final isEditing = oldName != null;
 
@@ -172,7 +253,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 borderRadius: BorderRadius.circular(22),
               ),
               title: Text(
-                isEditing ? 'Edit Category' : 'Add Category',
+                isEditing ? 'Rename Category' : 'Add Category',
                 style: TextStyle(
                   color: _textColor,
                   fontWeight: FontWeight.w800,
@@ -190,14 +271,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         fontSize: 12,
                       ),
                     ),
-
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
                     TextField(
                       controller: controller,
                       autofocus: true,
                       maxLength: 25,
-                      textCapitalization: TextCapitalization.words,
+                      textCapitalization:
+                          TextCapitalization.words,
                       style: TextStyle(color: _textColor),
                       decoration: InputDecoration(
                         hintText: 'Category name',
@@ -217,14 +298,13 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 17),
 
                     Text(
                       'Choose Category Icon',
                       style: TextStyle(
                         color: _textColor,
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
                       ),
                     ),
 
@@ -233,43 +313,54 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
-                      children: _availableCategoryIcons.entries.map((entry) {
-                        final selected = selectedIconKey == entry.key;
+                      children: _availableCategoryIcons.entries.map(
+                        (entry) {
+                          final selected =
+                              selectedIconKey == entry.key;
 
-                        return InkWell(
-                          onTap: () {
-                            setDialogState(() {
-                              selectedIconKey = entry.key;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: 43,
-                            height: 43,
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? _gold.withValues(alpha: 0.2)
-                                  : _backgroundColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: selected ? _gold : _borderColor,
+                          return InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedIconKey = entry.key;
+                              });
+                            },
+                            borderRadius:
+                                BorderRadius.circular(12),
+                            child: Container(
+                              width: 43,
+                              height: 43,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? _gold.withValues(alpha: 0.2)
+                                    : _backgroundColor,
+                                borderRadius:
+                                    BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selected
+                                      ? _gold
+                                      : _borderColor,
+                                ),
+                              ),
+                              child: Icon(
+                                entry.value,
+                                color: selected
+                                    ? _iconColor
+                                    : _secondaryColor,
+                                size: 21,
                               ),
                             ),
-                            child: Icon(
-                              entry.value,
-                              color: selected ? _gold : _secondaryColor,
-                              size: 21,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        },
+                      ).toList(),
                     ),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
                   child: Text(
                     'Cancel',
                     style: TextStyle(color: _secondaryColor),
@@ -293,7 +384,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     backgroundColor: _gold,
                     foregroundColor: const Color(0xFF292016),
                   ),
-                  child: Text(isEditing ? 'Update' : 'Add Category'),
+                  child: Text(
+                    isEditing ? 'Update' : 'Add Category',
+                  ),
                 ),
               ],
             );
@@ -315,7 +408,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     if (!mounted) return;
 
     if (success) {
-      await _service.saveCategoryIcon(name, result.iconKey);
+      await _service.saveCategoryIcon(
+        name,
+        result.iconKey,
+      );
+
+      if (isEditing &&
+          _pinnedCategories.contains(oldName)) {
+        await _toggleCategoryPin(oldName);
+        await _toggleCategoryPin(name);
+      }
+
       await _loadData();
 
       if (!mounted) return;
@@ -332,46 +435,79 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Category already exists or cannot be changed.'),
+          content: Text(
+            'Category already exists or cannot be changed.',
+          ),
         ),
       );
     }
   }
 
   // DELETE CATEGORY
-  Future<void> _deleteCategory(String category) async {
-    if (category == 'Personal') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Personal is the default category and cannot be deleted.'),
-        ),
-      );
-      return;
-    }
 
-    final confirm = await showDialog<bool>(
+  Future<void> _deleteCategory(String category) async {
+    final noteCount = _countNotes(category);
+
+    final remainingCategories = _categories
+        .where((item) => item != category)
+        .toList();
+
+    final hasDestination = remainingCategories.isNotEmpty;
+
+    final choice = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: _cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
           title: Text(
             'Delete Category?',
-            style: TextStyle(color: _textColor),
+            style: TextStyle(
+              color: _textColor,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           content: Text(
-            'Delete "$category"? Its notes will be moved to Personal.',
-            style: TextStyle(color: _secondaryColor),
+            noteCount == 0
+                ? 'Are you sure you want to delete "$category"?'
+                : 'This category contains $noteCount ${noteCount == 1 ? 'note' : 'notes'}.\n\n'
+                    'Choose whether to keep or permanently delete these notes.',
+            style: TextStyle(
+              color: _secondaryColor,
+              height: 1.5,
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: _secondaryColor),
+              ),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: Colors.red),
+            if (noteCount > 0 && hasDestination)
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text(
+                  'Keep Notes',
+                  style: TextStyle(color: _gold),
+                ),
+              ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                true,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                noteCount > 0
+                    ? 'Delete Category & Notes'
+                    : 'Delete',
               ),
             ),
           ],
@@ -379,145 +515,210 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       },
     );
 
-    if (confirm != true) return;
+    if (choice == null) return;
 
-    final success = await _service.deleteCategory(category);
+    final success = await _service.deleteCategory(
+      category,
+      deleteNotes: choice,
+    );
 
     if (!mounted) return;
 
     if (success) {
       await _loadData();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            choice
+                ? 'Category and notes permanently deleted'
+                : 'Category deleted. Notes moved to ${remainingCategories.first}',
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to delete category.'),
+        ),
+      );
     }
   }
 
-  // CATEGORY OPTIONS
+  // THREE DOT POPUP MENU
+
   Future<void> _showCategoryMenu(String category) async {
-    final choice = await showModalBottomSheet<String>(
+    final isPinned = _pinnedCategories.contains(category);
+
+    final choice = await showMenu<String>(
       context: context,
-      backgroundColor: _cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+      color: _isDark
+          ? const Color(0xFF353535)
+          : Colors.white,
+      elevation: 12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(17),
       ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      position: const RelativeRect.fromLTRB(
+        120,
+        180,
+        15,
+        0,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'rename',
+          child: Row(
             children: [
-              ListTile(
-                leading: const Icon(Icons.edit_outlined, color: _gold),
-                title: Text(
-                  'Rename Category',
-                  style: TextStyle(color: _textColor),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'rename'),
+              const Icon(
+                Icons.edit_outlined,
+                color: _gold,
+                size: 21,
               ),
-              ListTile(
-                leading: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                ),
-                title: Text(
-                  'Delete Category',
-                  style: TextStyle(color: _textColor),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'delete'),
+              const SizedBox(width: 12),
+              Text(
+                'Rename',
+                style: TextStyle(color: _textColor),
               ),
-              const SizedBox(height: 10),
             ],
           ),
-        );
-      },
+        ),
+        PopupMenuItem(
+          value: 'pin',
+          child: Row(
+            children: [
+              Icon(
+                isPinned
+                    ? Icons.push_pin_rounded
+                    : Icons.push_pin_outlined,
+                color: _gold,
+                size: 21,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isPinned ? 'Unpin' : 'Pin',
+                style: TextStyle(color: _textColor),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.redAccent,
+                size: 21,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Delete',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
 
     if (!mounted) return;
 
-    if (choice == 'rename') {
-      await _showCategoryDialog(oldName: category);
-    } else if (choice == 'delete') {
-      await _deleteCategory(category);
+    switch (choice) {
+      case 'rename':
+        await _showCategoryDialog(oldName: category);
+        break;
+
+      case 'pin':
+        await _toggleCategoryPin(category);
+        break;
+
+      case 'delete':
+        await _deleteCategory(category);
+        break;
     }
   }
 
   // OPEN CATEGORY NOTES
+
   Future<void> _openCategory(String category) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CategoryNotesScreen(category: category),
+        builder: (_) => CategoryNotesScreen(
+          category: category,
+        ),
       ),
     );
 
-    if (mounted) await _loadData();
+    if (mounted) {
+      await _loadData();
+    }
   }
 
   // CATEGORY CARD
+
   Widget _categoryCard(String category) {
     final count = _countNotes(category);
 
     return Material(
       color: _cardColor,
-      borderRadius: BorderRadius.circular(25),
+      borderRadius: BorderRadius.circular(28),
       child: InkWell(
         onTap: () => _openCategory(category),
         onLongPress: () => _showCategoryMenu(category),
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(28),
         child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 15,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(25),
+            color: _cardColor,
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: _borderColor.withValues(alpha: 0.7),
-              width: 0.7,
+              color: _borderColor.withValues(alpha: 0.5),
+              width: 0.8,
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(8, 24, 8, 20),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // GOLD ICON BACKGROUND
+              // GOLDEN CATEGORY ICON
               Container(
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
-                  color: _isDark ? _goldDark : _gold,
-                  borderRadius: BorderRadius.circular(27),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _gold.withValues(alpha: 0.12),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
+                  color: _isDark
+                      ? const Color(0xFF98753B)
+                      : const Color(0xFFE2B85F),
+                  borderRadius: BorderRadius.circular(25),
                 ),
                 child: Icon(
                   _iconFor(category),
                   size: 43,
-                  color: const Color(0xFFFFD77D),
+                  color: _iconColor,
                 ),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 13),
 
               // CATEGORY NAME
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                child: Text(
-                  category,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _textColor,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
-                  ),
+              Text(
+                category,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _textColor,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 7),
 
               // NOTES COUNT
               Text(
@@ -529,11 +730,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 5),
 
-              // CATEGORY OPTIONS
+              // THREE DOT MENU
               SizedBox(
-                height: 25,
+                height: 27,
                 child: IconButton(
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
@@ -542,7 +743,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   icon: Icon(
                     Icons.more_horiz_rounded,
                     color: _secondaryColor,
-                    size: 21,
+                    size: 23,
                   ),
                 ),
               ),
@@ -553,40 +754,38 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  // DASHED ADD NEW CARD
+  // ADD NEW DASHED CARD
+
   Widget _addNewCard() {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(25),
-      child: InkWell(
-        onTap: () => _showCategoryDialog(),
-        borderRadius: BorderRadius.circular(25),
-        child: CustomPaint(
-          painter: _DashedBorderPainter(
-            color: _gold,
-            radius: 25,
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.add_rounded,
+    return InkWell(
+      onTap: () => _showCategoryDialog(),
+      borderRadius: BorderRadius.circular(23),
+      child: CustomPaint(
+        painter: _DashedBorderPainter(
+          color: _gold,
+          radius: 23,
+        ),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(12),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_rounded,
+                color: _gold,
+                size: 48,
+              ),
+              SizedBox(height: 10),
+              Text(
+                '+ Add New',
+                style: TextStyle(
                   color: _gold,
-                  size: 43,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 9),
-                const Text(
-                  'Add New',
-                  style: TextStyle(
-                    color: _gold,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -594,68 +793,64 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   // HEADER
+
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 17, 20, 25),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 25),
+      child: Row(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Material(
-                color: _cardColor,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => Navigator.maybePop(context),
-                  child: SizedBox(
-                    width: 54,
-                    height: 54,
-                    child: Icon(
-                      Icons.arrow_back_rounded,
-                      color: _gold,
-                      size: 27,
-                    ),
-                  ),
+          Material(
+            color: _cardColor,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () {
+                Navigator.popUntil(
+                  context,
+                  (route) => route.isFirst,
+                );
+              },
+              child: SizedBox(
+                width: 53,
+                height: 53,
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  color: _gold,
+                  size: 27,
                 ),
               ),
-
-              const SizedBox(width: 17),
-
-              Expanded(
-                child: Text(
-                  'Categories',
-                  style: TextStyle(
-                    color: _textColor,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.9,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
 
-          const SizedBox(height: 15),
+          const SizedBox(width: 17),
 
-          Padding(
-            padding: const EdgeInsets.only(left: 71),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
+                  'Categories',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
                   'Organize your thoughts.',
                   style: TextStyle(
                     color: _secondaryColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 11),
                 Container(
                   width: 95,
-                  height: 5,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: _gold,
                     borderRadius: BorderRadius.circular(10),
@@ -669,16 +864,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  // BOTTOM ADD BUTTON
+  // BOTTOM ADD CATEGORY BUTTON
+
   Widget _buildAddButton() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       child: SizedBox(
-        height: 65,
         width: double.infinity,
+        height: 58,
         child: ElevatedButton.icon(
           onPressed: () => _showCategoryDialog(),
-          icon: const Icon(Icons.add_rounded, size: 26),
+          icon: const Icon(Icons.add_rounded, size: 24),
           label: const Text(
             'Add Category',
             style: TextStyle(
@@ -690,7 +886,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             backgroundColor: _gold,
             foregroundColor: const Color(0xFF282016),
             elevation: 3,
-            shadowColor: _gold.withValues(alpha: 0.25),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(35),
             ),
@@ -700,37 +895,58 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
+  // MAIN SCREEN
+
   @override
   Widget build(BuildContext context) {
+    final categories = _displayCategories;
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: _loading
             ? const Center(
-                child: CircularProgressIndicator(color: _gold),
+                child: CircularProgressIndicator(
+                  color: _gold,
+                ),
               )
             : Column(
                 children: [
                   _buildHeader(),
 
                   Expanded(
-                    child: GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 15),
-                      physics: const BouncingScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        mainAxisExtent: 145,
-                      ),
-                      itemCount: _categories.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == _categories.length) {
-                          return _addNewCard();
-                        }
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
 
-                        return _categoryCard(_categories[index]);
+                        final columns = width >= 650 ? 3 : 2;
+
+                        return GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(
+                            20,
+                            0,
+                            20,
+                            18,
+                          ),
+                          physics: const BouncingScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: columns,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                            mainAxisExtent: 230,
+                          ),
+                          itemCount: categories.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == categories.length) {
+                              return _addNewCard();
+                            }
+
+                            return _categoryCard(
+                              categories[index],
+                            );
+                          },
+                        );
                       },
                     ),
                   ),
@@ -743,9 +959,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 }
 
-// =====================================================
+// ======================================================
 // DASHED BORDER PAINTER
-// =====================================================
+// ======================================================
 
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
@@ -771,13 +987,14 @@ class _DashedBorderPainter extends CustomPainter {
         ),
       );
 
-    final metrics = path.computeMetrics();
-
-    for (final metric in metrics) {
+    for (final metric in path.computeMetrics()) {
       double distance = 0;
 
       while (distance < metric.length) {
-        final end = (distance + 8).clamp(0.0, metric.length);
+        final end = (distance + 8).clamp(
+          0.0,
+          metric.length,
+        );
 
         canvas.drawPath(
           metric.extractPath(distance, end),
@@ -790,15 +1007,17 @@ class _DashedBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) {
+  bool shouldRepaint(
+    covariant _DashedBorderPainter oldDelegate,
+  ) {
     return oldDelegate.color != color ||
         oldDelegate.radius != radius;
   }
 }
 
-// =====================================================
+// ======================================================
 // CATEGORY NOTES SCREEN
-// =====================================================
+// ======================================================
 
 class CategoryNotesScreen extends StatefulWidget {
   final String category;
@@ -813,7 +1032,8 @@ class CategoryNotesScreen extends StatefulWidget {
       _CategoryNotesScreenState();
 }
 
-class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
+class _CategoryNotesScreenState
+    extends State<CategoryNotesScreen> {
   final NoteServices _service = NoteServices();
 
   List<NoteModel> _notes = [];
@@ -823,11 +1043,13 @@ class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
       Theme.of(context).brightness == Brightness.dark;
 
   Color get _textColor =>
-      _isDark ? _CategoriesScreenState._lightText
+      _isDark
+          ? const Color(0xFFFFF9ED)
           : const Color(0xFF25221D);
 
   Color get _secondaryColor =>
-      _isDark ? _CategoriesScreenState._mutedText
+      _isDark
+          ? const Color(0xFFC5BDAF)
           : const Color(0xFF77716A);
 
   @override
@@ -844,7 +1066,9 @@ class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
 
       setState(() {
         _notes = allNotes
-            .where((note) => note.category == widget.category)
+            .where(
+              (note) => note.category == widget.category,
+            )
             .toList()
           ..sort(
             (a, b) => b.updatedAt.compareTo(a.updatedAt),
@@ -854,12 +1078,19 @@ class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() => _loading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to load notes: $e'),
+        ),
+      );
     }
   }
 
   Future<void> _editNote(NoteModel note) async {
-    final result = await Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => NoteEditorScreen(note: note),
@@ -868,9 +1099,7 @@ class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
 
     if (!mounted) return;
 
-    if (result == 'deleted' || result is NoteModel) {
-      await _loadNotes();
-    }
+    await _loadNotes();
   }
 
   @override
@@ -945,7 +1174,8 @@ class _CategoryNotesScreenState extends State<CategoryNotesScreen> {
                           decoration: BoxDecoration(
                             color: Color(note.colorValue)
                                 .withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(11),
+                            borderRadius:
+                                BorderRadius.circular(11),
                           ),
                           child: const Icon(
                             Icons.description_outlined,
