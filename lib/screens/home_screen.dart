@@ -313,8 +313,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         margin: EdgeInsets.only(bottom: isGrid ? 0 : 10),
         padding: EdgeInsets.symmetric(
-          horizontal: isGrid ? 12 : 14,
-          vertical: isGrid ? 10 : 12,
+          horizontal: isGrid ? 10 : 14,
+          vertical: isGrid ? 7 : 12,
         ),
         decoration: BoxDecoration(
           color: noteColor.withValues(alpha: 0.35),
@@ -481,9 +481,9 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: notes.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          mainAxisExtent: 145,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          mainAxisExtent: 115,
         ),
         itemBuilder: (context, index) {
           return _buildNoteCard(notes[index], isGrid: true);
