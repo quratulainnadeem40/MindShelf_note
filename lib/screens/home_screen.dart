@@ -566,7 +566,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'MindShelf',
+                'ShelfNote',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
