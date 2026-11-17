@@ -7,6 +7,7 @@ import 'package:mindshelf_note/services/local_storage_service.dart';
 import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 import 'package:mindshelf_note/theme/color_app.dart';
 
+import 'home_screen.dart';
 import 'note_editor_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -22,13 +23,36 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   List<NoteModel> _favoriteNotes = [];
   bool _isLoading = true;
 
+  bool get _isDark =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  Color get _primaryColor =>
+      _isDark ? AppColors.darkPrimary : AppColors.primary;
+
+  Color get _primaryDark =>
+      _isDark ? AppColors.darkPrimary : AppColors.primaryDark;
+
+  Color get _illustrationBackground =>
+      _isDark
+          ? AppColors.darkPink
+          : AppColors.lightCard;
+
+  Color get _illustrationAccent =>
+      _isDark
+          ? AppColors.darkPrimary.withValues(alpha: 0.45)
+          : AppColors.accent.withValues(alpha: 0.55);
+
+  Color get _illustrationHeart =>
+      _isDark
+          ? AppColors.darkPrimary
+          : AppColors.primary;
+
   @override
   void initState() {
     super.initState();
     _loadFavorites();
   }
 
- 
   Future<void> _loadFavorites() async {
     final notes = await _noteService.getFavoriteNotes();
 
@@ -41,18 +65,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _removeFavorite(NoteModel note) async {
-  await _noteService.toggleFavorite(note.id);
-  await _loadFavorites();
+    await _noteService.toggleFavorite(note.id);
+    await _loadFavorites();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Removed from Favorites'),
-      duration: Duration(seconds: 1),
-    ),
-  );
-}
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Removed from Favorites'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
 
   Future<void> _openNote(NoteModel note) async {
     final result = await Navigator.push(
@@ -78,9 +102,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return '${months[date.month - 1]} ${date.day}';
   }
 
-  bool get _isDark =>
-      Theme.of(context).brightness == Brightness.dark;
-
   @override
   Widget build(BuildContext context) {
     final textColor = _isDark
@@ -102,7 +123,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HomeScreen(),
+                        ),
+                        (route) => false,
+                      );
+                    },
                     icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: textColor,
@@ -112,7 +141,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   const Spacer(),
                   Icon(
                     Icons.favorite_rounded,
-                    color: AppColors.primary,
+                    color: _primaryColor,
                     size: 23,
                   ),
                 ],
@@ -121,9 +150,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
             Expanded(
               child: _isLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.primary,
+                        color: _primaryColor,
                       ),
                     )
                   : _favoriteNotes.isEmpty
@@ -141,7 +170,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     Color secondaryColor,
   ) {
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: _primaryColor,
       onRefresh: _loadFavorites,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(
@@ -173,7 +202,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.primary,
+              color: _primaryColor,
             ),
           ),
           const SizedBox(height: 13),
@@ -251,9 +280,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       color: noteColor.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.description_outlined,
-                      color: AppColors.primary,
+                      color: _primaryColor,
                       size: 25,
                     ),
                   ),
@@ -291,12 +320,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ),
                 ),
 
+                // LARGER FAVORITE REMOVE TAP AREA
                 IconButton(
                   onPressed: () => _removeFavorite(note),
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(
+                  tooltip: 'Remove from Favorites',
+                  visualDensity: VisualDensity.standard,
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  icon: Icon(
                     Icons.favorite_rounded,
-                    color: AppColors.primary,
+                    color: _primaryColor,
                     size: 23,
                   ),
                 ),
@@ -318,8 +354,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ),
                   child: Text(
                     note.category,
-                    style: const TextStyle(
-                      color: AppColors.primaryDark,
+                    style: TextStyle(
+                      color: _primaryDark,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
@@ -358,17 +394,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // HEART ILLUSTRATION
+            // THEME BASED HEART ILLUSTRATION
             Container(
               width: 175,
               height: 175,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFE9ED),
+                color: _illustrationBackground,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFE7A6B4)
-                        .withValues(alpha: 0.2),
+                    color: _primaryColor.withValues(alpha: 0.12),
                     blurRadius: 25,
                     spreadRadius: 5,
                   ),
@@ -377,35 +412,35 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Positioned(
+                  Positioned(
                     top: 29,
                     left: 35,
                     child: Icon(
                       Icons.auto_awesome,
-                      color: Color(0xFFE7A6B4),
+                      color: _illustrationAccent,
                       size: 24,
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     right: 29,
                     top: 45,
                     child: Icon(
                       Icons.favorite_rounded,
-                      color: Color(0xFFF2B9C5),
+                      color: _illustrationAccent,
                       size: 19,
                     ),
                   ),
-                  const Icon(
+                  Icon(
                     Icons.favorite_rounded,
                     size: 92,
-                    color: Color(0xFFB34C60),
+                    color: _illustrationHeart,
                   ),
-                  const Positioned(
+                  Positioned(
                     bottom: 33,
                     right: 34,
                     child: Icon(
                       Icons.auto_awesome,
-                      color: Color(0xFFE7A6B4),
+                      color: _illustrationAccent,
                       size: 20,
                     ),
                   ),
@@ -440,6 +475,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
             const SizedBox(height: 22),
 
+            // THEME BASED ADD FAVORITE BUTTON
             InkWell(
               onTap: () {
                 Navigator.pop(context);
@@ -451,22 +487,27 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   vertical: 11,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFE9ED),
+                  color: _isDark
+                      ? AppColors.darkPink
+                      : AppColors.lightCard,
                   borderRadius: BorderRadius.circular(25),
+                  border: Border.all(
+                    color: _primaryColor.withValues(alpha: 0.25),
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.favorite_border_rounded,
-                      color: AppColors.primary,
+                      color: _primaryColor,
                       size: 17,
                     ),
-                    SizedBox(width: 7),
+                    const SizedBox(width: 7),
                     Text(
                       'Add your first favorite',
                       style: TextStyle(
-                        color: AppColors.primaryDark,
+                        color: _primaryDark,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                       ),

@@ -31,6 +31,20 @@ class _HomeScreenState extends State<HomeScreen> {
   String _sortOrder = 'Last Edited';
   String _layout = 'List';
 
+  bool get _isDark =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  Color get _mainTextColor =>
+      _isDark ? AppColors.darkText : AppColors.lightText;
+
+  Color get _secondaryTextColor =>
+      _isDark
+          ? AppColors.darkSecondaryText
+          : AppColors.lightSecondaryText;
+
+  Color get _primaryColor =>
+      _isDark ? AppColors.darkPrimary : AppColors.primary;
+
   @override
   void initState() {
     super.initState();
@@ -271,6 +285,48 @@ class _HomeScreenState extends State<HomeScreen> {
     return Color(note.colorValue);
   }
 
+  Future<void> _toggleNotePin(NoteModel note) async {
+    final newValue = !note.isPinned;
+
+    await _noteService.setPinStatus(note.id, newValue);
+
+    if (!mounted) return;
+
+    await _loadHomeData();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newValue ? 'Note pinned successfully' : 'Note unpinned successfully',
+        ),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  Future<void> _toggleNoteFavorite(NoteModel note) async {
+    final newValue = !note.isFavorite;
+
+    await _noteService.setFavoriteStatus(note.id, newValue);
+
+    if (!mounted) return;
+
+    await _loadHomeData();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newValue ? 'Added to Favorites' : 'Removed from Favorites',
+        ),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
   Widget _buildNoteCard(NoteModel note) {
     final noteColor = _noteColor(note);
 
@@ -296,27 +352,54 @@ class _HomeScreenState extends State<HomeScreen> {
                     note.title.isEmpty ? 'Untitled Note' : note.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: _mainTextColor,
                     ),
                   ),
                 ),
-                if (note.isPinned)
-                  const Icon(
-                    Icons.push_pin_rounded,
-                    size: 17,
-                    color: Colors.black54,
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
                   ),
-                if (note.isFavorite)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 7),
-                    child: Icon(
-                      Icons.favorite_rounded,
-                      size: 17,
-                      color: Colors.redAccent,
-                    ),
+                  padding: EdgeInsets.zero,
+                  tooltip: note.isPinned ? 'Unpin Note' : 'Pin Note',
+                  onPressed: () => _toggleNotePin(note),
+                  icon: Icon(
+                    note.isPinned
+                        ? Icons.push_pin_rounded
+                        : Icons.push_pin_outlined,
+                    size: 20,
+                    color: note.isPinned
+                        ? _primaryColor
+                        : _secondaryTextColor,
                   ),
+                ),
+                IconButton(
+                  onPressed: () => _toggleNoteFavorite(note),
+                  tooltip: note.isFavorite
+                      ? 'Remove from Favorites'
+                      : 'Add to Favorites',
+                  visualDensity: VisualDensity.standard,
+                  constraints: const BoxConstraints(
+                    minWidth: 48,
+                    minHeight: 48,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  splashRadius: 25,
+                  icon: Icon(
+                    note.isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 21,
+                    color: note.isFavorite
+                        ? _primaryColor
+                        : _secondaryTextColor,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 9),
@@ -326,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade800,
+                color: _secondaryTextColor,
                 height: 1.4,
               ),
             ),
@@ -336,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(
                   Icons.folder_outlined,
                   size: 15,
-                  color: Colors.grey.shade700,
+                  color: _secondaryTextColor,
                 ),
                 const SizedBox(width: 5),
                 Expanded(
@@ -346,7 +429,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade700,
+                      color: _secondaryTextColor,
                     ),
                   ),
                 ),
@@ -354,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _formatDate(note.updatedAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade700,
+                    color: _secondaryTextColor,
                   ),
                 ),
               ],
@@ -409,16 +492,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 10),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
+                color: _mainTextColor,
               ),
             ),
             const SizedBox(height: 5),
             Text(
               subtitle,
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: _secondaryTextColor,
                 fontSize: 13,
               ),
               textAlign: TextAlign.center,
@@ -437,24 +521,25 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.push_pin_rounded,
               size: 18,
-              color: AppColors.primary,
+              color: _primaryColor,
             ),
             const SizedBox(width: 7),
-            const Text(
+            Text(
               'Pinned Notes',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
+                color: _mainTextColor,
               ),
             ),
             const Spacer(),
             Text(
               '${_pinnedNotes.length}',
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: _secondaryTextColor,
                 fontSize: 13,
               ),
             ),
@@ -486,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 '${_notes.length} Notes  •  ${_notes.where((n) => n.isPinned).length} Pinned',
                 style: TextStyle(
-                  color: Colors.grey.shade600,
+                  color: _secondaryTextColor,
                   fontSize: 13,
                 ),
               ),
@@ -541,12 +626,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNotesToolbar() {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Text(
             'All Notes',
             style: TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.bold,
+              color: _mainTextColor,
             ),
           ),
         ),

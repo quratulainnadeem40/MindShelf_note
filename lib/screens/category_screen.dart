@@ -58,16 +58,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Map<String, String> _categoryIconKeys = {};
 
-  final List<Color> _colors = [
-    const Color(0xFFF5DCE3),
-    const Color(0xFFF1D7CA),
-    const Color(0xFFE9DCEB),
-    const Color(0xFFF6E1CE),
-    const Color(0xFFF2DCE4),
-    const Color(0xFFDCE9DF),
-    const Color(0xFFDCE9F0),
-  ];
-
   bool get _isDark =>
       Theme.of(context).brightness == Brightness.dark;
 
@@ -84,6 +74,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   Color get _dividerColor =>
       _isDark ? AppColors.darkDivider : AppColors.lightDivider;
+
+  Color get _primaryColor =>
+      _isDark ? AppColors.darkPrimary : AppColors.primary;
+
+  Color get _backgroundColor =>
+      _isDark ? AppColors.darkBackground : AppColors.lightBackground;
 
   @override
   void initState() {
@@ -134,10 +130,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       default:
         return Icons.folder_outlined;
     }
-  }
-
-  Color _colorFor(int index) {
-    return _colors[index % _colors.length];
   }
 
   Future<void> _showCategoryDialog({
@@ -217,9 +209,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(13),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 1.4,
+                          borderSide: BorderSide(
+                            color: _primaryColor,
+                            width: 1.5,
                           ),
                         ),
                       ),
@@ -252,12 +244,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             height: 42,
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppColors.primary.withValues(alpha: 0.14)
+                                  ? _primaryColor.withValues(alpha: 0.15)
                                   : Theme.of(context).scaffoldBackgroundColor,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isSelected
-                                    ? AppColors.primary
+                                    ? _primaryColor
                                     : _dividerColor,
                                 width: isSelected ? 1.5 : 0.8,
                               ),
@@ -266,7 +258,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                               icon,
                               size: 21,
                               color: isSelected
-                                  ? AppColors.primary
+                                  ? _primaryColor
                                   : _secondaryColor,
                             ),
                           ),
@@ -320,8 +312,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: _primaryColor,
+                    foregroundColor: _isDark
+                        ? AppColors.darkBackground
+                        : Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -485,16 +479,29 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Widget _headerIllustration() {
+    final illustrationBackground =
+        _isDark ? AppColors.darkPink : AppColors.lightPink;
+
+    final paperColor =
+        _isDark ? AppColors.darkSurface : AppColors.lightSurface;
+
+    final folderColor =
+        _isDark ? AppColors.darkPrimary : AppColors.primary;
+
+    final folderIconColor =
+        _isDark ? AppColors.darkBackground : Colors.white;
+
     return Container(
       width: 112,
       height: 112,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9DCE5),
+        color: illustrationBackground,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
+          // BACKGROUND PAPER SHAPE
           Positioned(
             top: 17,
             right: 18,
@@ -504,17 +511,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 width: 58,
                 height: 68,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: paperColor,
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: Icon(
                   Icons.notes_rounded,
-                  color: AppColors.primary.withValues(alpha: 0.45),
+                  color: folderColor.withValues(alpha: 0.45),
                   size: 30,
                 ),
               ),
             ),
           ),
+
+          // FRONT GOLD FOLDER
           Positioned(
             bottom: 12,
             left: 13,
@@ -522,19 +531,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               width: 78,
               height: 60,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: folderColor,
                 borderRadius: BorderRadius.circular(13),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: folderColor.withValues(alpha: 0.22),
                     blurRadius: 12,
                     offset: const Offset(0, 5),
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.folder_special_rounded,
-                color: Colors.white,
+                color: folderIconColor,
                 size: 39,
               ),
             ),
@@ -544,9 +553,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Widget _categoryCard(String category, int index) {
+  Widget _categoryCard(String category) {
     final count = _countNotes(category);
-    final color = _colorFor(index);
 
     return Material(
       color: _isDark ? AppColors.darkCard : const Color(0xFFFFFCFC),
@@ -567,10 +575,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 ? []
                 : [
                     BoxShadow(
-                      color: const Color(0xFFB65D78)
-                          .withValues(alpha: 0.055),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      blurRadius: 18,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 6),
                     ),
                   ],
           ),
@@ -579,14 +587,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               Container(
                 width: 57,
                 height: 57,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color,
+                  color: _isDark
+                      ? AppColors.darkPink
+                      : AppColors.lightCard,
                   borderRadius: BorderRadius.circular(19),
                 ),
                 child: Icon(
                   _iconFor(category),
-                  color: const Color(0xFF98536A),
-                  size: 27,
+                  size: 25,
+                  color: _isDark
+                      ? AppColors.darkPrimary
+                      : AppColors.primary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -646,9 +659,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isDark
-          ? Theme.of(context).scaffoldBackgroundColor
-          : const Color(0xFFFFF4F3),
+      backgroundColor: _backgroundColor,
       body: SafeArea(
         child: _loading
             ? const Center(
@@ -682,13 +693,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         const SizedBox(height: 5),
 
                         Row(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     'Categories',
@@ -712,18 +722,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                     width: 75,
                                     height: 4,
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      color: _primaryColor,
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
                             const SizedBox(width: 8),
-
-                            _headerIllustration(),
+                            SizedBox(
+                              width: 112,
+                              height: 112,
+                              child: _headerIllustration(),
+                            ),
                           ],
                         ),
                       ],
@@ -749,10 +760,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             separatorBuilder: (_, _) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (context, index) {
-                              return _categoryCard(
-                                _categories[index],
-                                index,
-                              );
+                              return _categoryCard(_categories[index]);
                             },
                           ),
                   ),
