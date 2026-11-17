@@ -492,24 +492,23 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         _isDark ? AppColors.darkBackground : Colors.white;
 
     return Container(
-      width: 112,
-      height: 112,
+      width: 104,
+      height: 104,
       decoration: BoxDecoration(
         color: illustrationBackground,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // BACKGROUND PAPER SHAPE
           Positioned(
-            top: 17,
-            right: 18,
+            top: 14,
+            right: 16,
             child: Transform.rotate(
               angle: 0.12,
               child: Container(
-                width: 58,
-                height: 68,
+                width: 55,
+                height: 62,
                 decoration: BoxDecoration(
                   color: paperColor,
                   borderRadius: BorderRadius.circular(9),
@@ -517,22 +516,20 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 child: Icon(
                   Icons.notes_rounded,
                   color: folderColor.withValues(alpha: 0.45),
-                  size: 30,
+                  size: 27,
                 ),
               ),
             ),
           ),
-
-          // FRONT GOLD FOLDER
           Positioned(
             bottom: 12,
-            left: 13,
+            left: 12,
             child: Container(
-              width: 78,
-              height: 60,
+              width: 76,
+              height: 55,
               decoration: BoxDecoration(
                 color: folderColor,
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
                     color: folderColor.withValues(alpha: 0.22),
@@ -544,7 +541,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               child: Icon(
                 Icons.folder_special_rounded,
                 color: folderIconColor,
-                size: 39,
+                size: 36,
               ),
             ),
           ),
@@ -557,16 +554,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     final count = _countNotes(category);
 
     return Material(
-      color: _isDark ? AppColors.darkCard : const Color(0xFFFFFCFC),
-      borderRadius: BorderRadius.circular(23),
+      color: _cardColor,
+      borderRadius: BorderRadius.circular(19),
       child: InkWell(
-        borderRadius: BorderRadius.circular(23),
+        borderRadius: BorderRadius.circular(19),
         onTap: () => _openCategory(category),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 88),
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 13,
+            vertical: 10,
+          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(23),
+            borderRadius: BorderRadius.circular(19),
             border: Border.all(
               color: dividerColorForCard(),
               width: 0.7,
@@ -575,35 +575,30 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 ? []
                 : [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.10),
-                      blurRadius: 18,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 6),
+                      color: AppColors.primary.withValues(alpha: 0.055),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
           ),
           child: Row(
             children: [
               Container(
-                width: 57,
-                height: 57,
-                alignment: Alignment.center,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: _isDark
                       ? AppColors.darkPink
                       : AppColors.lightCard,
-                  borderRadius: BorderRadius.circular(19),
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(
                   _iconFor(category),
-                  size: 25,
-                  color: _isDark
-                      ? AppColors.darkPrimary
-                      : AppColors.primary,
+                  size: 22,
+                  color: _primaryColor,
                 ),
               ),
-              const SizedBox(width: 16),
-
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -615,17 +610,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _textColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       '$count ${count == 1 ? 'note' : 'notes'}',
                       style: TextStyle(
                         color: _secondaryColor,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -634,14 +628,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               ),
               IconButton(
                 onPressed: () => _showCategoryMenu(category),
+                tooltip: 'Category options',
+                visualDensity: VisualDensity.compact,
                 constraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 40,
+                  minWidth: 38,
+                  minHeight: 38,
                 ),
                 icon: Icon(
                   Icons.more_vert_rounded,
                   color: _secondaryColor,
-                  size: 21,
+                  size: 20,
                 ),
               ),
             ],
@@ -662,9 +658,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: _loading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(
-                  color: AppColors.primary,
+                  color: _primaryColor,
                 ),
               )
             : Column(
@@ -672,55 +668,59 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   // HEADER
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
-                      20, 8, 20, 12,
+                      18, 5, 18, 10,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () =>
-                                  Navigator.pop(context),
-                              icon: Icon(
-                                Icons.arrow_back_rounded,
-                                color: _textColor,
-                              ),
+                        // BACK BUTTON
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
                             ),
-                          ],
+                            icon: Icon(
+                              Icons.arrow_back_rounded,
+                              color: _textColor,
+                              size: 21,
+                            ),
+                          ),
                         ),
-
                         const SizedBox(height: 5),
-
+                        // TITLE + FIXED FOLDER ILLUSTRATION
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     'Categories',
                                     style: TextStyle(
-                                      fontSize: 29,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.8,
                                       color: _textColor,
+                                      fontSize: 27,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.7,
                                     ),
                                   ),
-                                  const SizedBox(height: 7),
+                                  const SizedBox(height: 6),
                                   Text(
                                     'Organize your thoughts.',
                                     style: TextStyle(
-                                      fontSize: 13,
                                       color: _secondaryColor,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                  const SizedBox(height: 13),
+                                  const SizedBox(height: 12),
                                   Container(
-                                    width: 75,
-                                    height: 4,
+                                    width: 52,
+                                    height: 3,
                                     decoration: BoxDecoration(
                                       color: _primaryColor,
                                       borderRadius: BorderRadius.circular(10),
@@ -729,10 +729,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
+                            // FIXED POSITION
                             SizedBox(
-                              width: 112,
-                              height: 112,
+                              width: 104,
+                              height: 104,
                               child: _headerIllustration(),
                             ),
                           ],
@@ -740,60 +741,83 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       ],
                     ),
                   ),
-
                   // CATEGORY LIST
                   Expanded(
                     child: _categories.isEmpty
                         ? Center(
-                            child: Text(
-                              'No categories yet.',
-                              style: TextStyle(
-                                color: _secondaryColor,
+                            child: Padding(
+                              padding: const EdgeInsets.all(25),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.folder_open_rounded,
+                                    size: 48,
+                                    color: _secondaryColor,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No categories yet',
+                                    style: TextStyle(
+                                      color: _textColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    'Add a category to organize your notes.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _secondaryColor,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           )
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(
-                              18, 8, 18, 15,
+                              18, 7, 18, 14,
                             ),
                             itemCount: _categories.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 12),
+                            separatorBuilder: (_, index) =>
+                                const SizedBox(height: 9),
                             itemBuilder: (context, index) {
                               return _categoryCard(_categories[index]);
                             },
                           ),
                   ),
-
                   // ADD CATEGORY BUTTON
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
-                      20, 10, 20, 16,
+                      18, 9, 18, 14,
                     ),
                     child: SizedBox(
                       width: double.infinity,
-                      height: 55,
+                      height: 49,
                       child: ElevatedButton.icon(
                         onPressed: () => _showCategoryDialog(),
                         icon: const Icon(
                           Icons.add_rounded,
-                          size: 24,
+                          size: 21,
                         ),
                         label: const Text(
                           'Add Category',
                           style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: _primaryColor,
                           foregroundColor: Colors.white,
-                          elevation: 2,
-                          shadowColor: AppColors.primary
-                              .withValues(alpha: 0.2),
+                          elevation: 1,
+                          shadowColor:
+                              _primaryColor.withValues(alpha: 0.2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(25),
                           ),
                         ),
                       ),
