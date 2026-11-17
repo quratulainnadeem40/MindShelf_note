@@ -659,34 +659,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomNavigation() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -3),
+        border: Border(
+          top: BorderSide(
+            color: _isDark
+                ? AppColors.darkDivider
+                : AppColors.lightDivider,
+            width: 0.7,
           ),
-        ],
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(Icons.home_rounded, 'Home', true, () {}),
-          _navItem(
-            Icons.folder_open_outlined,
-            'Categories',
-            false,
-            _openCategories,
+      child: BottomNavigationBar(
+        currentIndex: 0,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Theme.of(context).cardColor,
+        selectedItemColor: _primaryColor,
+        unselectedItemColor: _secondaryTextColor,
+        elevation: 0,
+        selectedLabelStyle: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 11,
+        ),
+        onTap: (index) {
+          if (index == 1) {
+            _openCategories();
+          } else if (index == 2) {
+            _openFavorites();
+          } else if (index == 3) {
+            _openSettings();
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
-          _navItem(
-            Icons.favorite_border_rounded,
-            'Favorites',
-            false,
-            _openFavorites,
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_outlined),
+            label: 'Categories',
           ),
-          _navItem(Icons.settings_outlined, 'Settings', false, _openSettings),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_border_rounded),
+            label: 'Favorites',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_rounded),
+            label: 'Settings',
+          ),
         ],
       ),
     );

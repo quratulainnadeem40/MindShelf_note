@@ -67,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 25),
 
               const Text(
-                'MindDesk_Note',
+                'SelfNote',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
