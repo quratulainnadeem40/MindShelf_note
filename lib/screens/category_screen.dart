@@ -478,78 +478,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     await _loadData();
   }
 
-  Widget _headerIllustration() {
-    final illustrationBackground =
-        _isDark ? AppColors.darkPink : AppColors.lightPink;
-
-    final paperColor =
-        _isDark ? AppColors.darkSurface : AppColors.lightSurface;
-
-    final folderColor =
-        _isDark ? AppColors.darkPrimary : AppColors.primary;
-
-    final folderIconColor =
-        _isDark ? AppColors.darkBackground : Colors.white;
-
-    return Container(
-      width: 104,
-      height: 104,
-      decoration: BoxDecoration(
-        color: illustrationBackground,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            top: 14,
-            right: 16,
-            child: Transform.rotate(
-              angle: 0.12,
-              child: Container(
-                width: 55,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: paperColor,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(
-                  Icons.notes_rounded,
-                  color: folderColor.withValues(alpha: 0.45),
-                  size: 27,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 12,
-            left: 12,
-            child: Container(
-              width: 76,
-              height: 55,
-              decoration: BoxDecoration(
-                color: folderColor,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: folderColor.withValues(alpha: 0.22),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.folder_special_rounded,
-                color: folderIconColor,
-                size: 36,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _categoryCard(String category) {
     final count = _countNotes(category);
 
@@ -667,9 +595,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 children: [
                   // HEADER
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      18, 5, 18, 10,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(18, 5, 18, 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -690,53 +616,36 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 5),
-                        // TITLE + FIXED FOLDER ILLUSTRATION
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Categories',
-                                    style: TextStyle(
-                                      color: _textColor,
-                                      fontSize: 27,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.7,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Organize your thoughts.',
-                                    style: TextStyle(
-                                      color: _secondaryColor,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    width: 52,
-                                    height: 3,
-                                    decoration: BoxDecoration(
-                                      color: _primaryColor,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // FIXED POSITION
-                            SizedBox(
-                              width: 104,
-                              height: 104,
-                              child: _headerIllustration(),
-                            ),
-                          ],
+                        const SizedBox(height: 12),
+                        // CATEGORY TITLE
+                        Text(
+                          'Categories',
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 27,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.7,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // SUBTITLE
+                        Text(
+                          'Organize your thoughts.',
+                          style: TextStyle(
+                            color: _secondaryColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // YELLOW UNDERLINE
+                        Container(
+                          width: 52,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: _primaryColor,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ],
                     ),
