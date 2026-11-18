@@ -608,12 +608,10 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.push_pin_rounded,
           count: '${pinned.length}',
         ),
-
         const SizedBox(height: 16),
 
-        ...pinned.map(
-          (note) => _buildNoteCard(note),
-        ),
+        // Pinned notes use the same selected Grid/List layout as all notes.
+        _buildNotesLayout(pinned),
 
         const SizedBox(height: 28),
       ],
@@ -863,12 +861,13 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 6),
 
         IconButton(
-          tooltip: _layout == 'List'
-              ? 'Grid View'
-              : 'List View',
+          // Icon shows the CURRENT layout; tooltip describes the action.
+          tooltip: _layout == 'Grid'
+              ? 'Switch to List View'
+              : 'Switch to Grid View',
           onPressed: _toggleLayout,
           icon: Icon(
-            _layout == 'List'
+            _layout == 'Grid'
                 ? Icons.grid_view_rounded
                 : Icons.view_agenda_outlined,
             color: _gold,

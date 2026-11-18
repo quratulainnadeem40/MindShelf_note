@@ -562,9 +562,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _divider(),
 
           _settingTile(
-            icon: Icons.view_agenda_outlined,
+            icon: _layout == 'Grid'
+                ? Icons.grid_view_rounded
+                : Icons.view_agenda_outlined,
             title: 'Note Display Layout',
-            subtitle: _layout,
+            subtitle: 'Currently selected: $_layout View',
             onTap: _showLayoutPicker,
           ),
         ],
@@ -993,14 +995,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (result != null && mounted) {
-      setState(() {
-        _layout = result;
-      });
-
       await _saveString(
         'notes_layout',
         result,
       );
+
+      if (!mounted) return;
+
+      setState(() {
+        _layout = result;
+      });
     }
   }
 

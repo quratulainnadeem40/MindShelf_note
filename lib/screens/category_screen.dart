@@ -879,8 +879,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: _buttonColor,
-            foregroundColor: _buttonTextColor,
+            backgroundColor: _gold,
+  foregroundColor: Colors.black,
             elevation: 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(35),
