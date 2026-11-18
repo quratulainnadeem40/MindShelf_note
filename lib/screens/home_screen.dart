@@ -29,7 +29,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSearching = false;
 
   String _searchQuery = '';
-  String _sortOrder = 'Last Edited';
+
+  // CHANGED: Default sorting is Date Created.
+  String _sortOrder = 'Date Created';
+
   String _layout = 'List';
 
   static const Color _gold = Color(0xFFE2B85F);
@@ -88,8 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _notes = notes;
 
+        // CHANGED: Default sorting is Date Created.
         _sortOrder =
-            prefs.getString('notes_sort_order') ?? 'Last Edited';
+            prefs.getString('notes_sort_order') ?? 'Date Created';
 
         _layout =
             prefs.getString('notes_layout') ?? 'List';
@@ -124,8 +128,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     switch (_sortOrder) {
       case 'Date Created':
+        // First created note appears first.
         notes.sort(
-          (a, b) => b.createdAt.compareTo(a.createdAt),
+          (a, b) => a.createdAt.compareTo(b.createdAt),
         );
         break;
 
@@ -138,9 +143,14 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
 
       case 'Last Edited':
-      default:
         notes.sort(
           (a, b) => b.updatedAt.compareTo(a.updatedAt),
+        );
+        break;
+
+      default:
+        notes.sort(
+          (a, b) => a.createdAt.compareTo(b.createdAt),
         );
         break;
     }
@@ -610,7 +620,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Pinned notes use the same selected Grid/List layout as all notes.
         _buildNotesLayout(pinned),
 
         const SizedBox(height: 28),
@@ -861,7 +870,6 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(width: 6),
 
         IconButton(
-          // Icon shows the CURRENT layout; tooltip describes the action.
           tooltip: _layout == 'Grid'
               ? 'Switch to List View'
               : 'Switch to Grid View',
@@ -1019,6 +1027,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // NAV ITEM
+
   Widget _homeNavItem({
     required IconData icon,
     required String label,
