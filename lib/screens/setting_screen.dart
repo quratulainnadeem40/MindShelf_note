@@ -7,7 +7,6 @@ import 'package:mindshelf_note/services/note_service.dart';
 
 import '../providers/theme_provider.dart';
 import '../theme/color_app.dart';
-import '../services/local_storage_service.dart' hide NoteServices;
 
 import 'category_screen.dart';
 import 'favorite_screen.dart';
@@ -26,7 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const Color _gold = Color(0xFFE2B85F);
 
   String _defaultCategory = 'Personal';
-  String _sortOrder = 'Last Edited';
+  String _sortOrder = 'Date Created';
   String _layout = 'List';
 
   int _noteColor = 0;
@@ -34,6 +33,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<String> _categories = ['Personal'];
 
   bool _isLoadingCategories = false;
+
+  static const List<String> _sortOptions = [
+    'Date Created',
+    'Alphabetically',
+  ];
 
   static const List<Color> _noteColors = [
     AppColors.notePink,
@@ -51,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // LOAD PREFERENCES AND DYNAMIC CATEGORIES
+
   Future<void> _loadPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -65,18 +70,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         defaultCategory = 'Personal';
       }
 
+      // Last Edited is no longer supported.
+      String savedSortOrder =
+          prefs.getString('notes_sort_order') ?? 'Date Created';
+
+      if (!_sortOptions.contains(savedSortOrder)) {
+        savedSortOrder = 'Date Created';
+
+        await prefs.setString(
+          'notes_sort_order',
+          savedSortOrder,
+        );
+      }
+
       setState(() {
         _categories = categories;
         _defaultCategory = defaultCategory;
+        _sortOrder = savedSortOrder;
 
-        _sortOrder =
-            prefs.getString('notes_sort_order') ?? 'Last Edited';
+        _layout = prefs.getString('notes_layout') ?? 'List';
 
-        _layout =
-            prefs.getString('notes_layout') ?? 'List';
-
-        _noteColor =
-            prefs.getInt('default_note_color') ?? 0;
+        _noteColor = prefs.getInt('default_note_color') ?? 0;
       });
 
       await prefs.setString(
@@ -89,12 +103,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // SAVE STRING PREFERENCE
+
   Future<void> _saveString(String key, String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key, value);
   }
 
   // SAVE DEFAULT COLOR
+
   Future<void> _saveColor(int index) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -108,6 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // THEME COLORS
+
   bool get _isDark =>
       Theme.of(context).brightness == Brightness.dark;
 
@@ -128,11 +145,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Color get _accentColor =>
       _isDark ? AppColors.darkPrimary : AppColors.primary;
 
+  // MAIN UI
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -185,12 +203,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
-
       bottomNavigationBar: _buildBottomNavigation(),
     );
   }
 
   // BOTTOM NAVIGATION
+
   Widget _buildBottomNavigation() {
     return SafeArea(
       top: false,
@@ -237,6 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // NAV ITEM
+
   Widget _settingsNavItem({
     required IconData icon,
     required String label,
@@ -270,8 +289,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 builder: (_) => const FavoritesScreen(),
               ),
             );
-          } else if (index == 3) {
-            return;
           }
         },
         borderRadius: BorderRadius.circular(14),
@@ -305,13 +322,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // HEADER
+
   Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            // FAVORITES STYLE GOLD BACK BUTTON
             Container(
               width: 42,
               height: 42,
@@ -337,9 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Text(
                 'Settings & Preferences',
@@ -355,9 +370,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
-
         const SizedBox(height: 9),
-
         Padding(
           padding: const EdgeInsets.only(left: 54),
           child: Text(
@@ -373,6 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // SECTION TITLE
+
   Widget _sectionTitle(String title) {
     return Text(
       title,
@@ -386,6 +400,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // APPEARANCE CARD
+
   Widget _buildAppearanceCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -398,9 +413,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Theme Appearance',
             'Choose how Shelf Note looks',
           ),
-
           const SizedBox(height: 17),
-
           Consumer<ThemeProvider>(
             builder: (context, provider, child) {
               return Row(
@@ -411,18 +424,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Light',
                     provider,
                   ),
-
                   const SizedBox(width: 9),
-
                   _themeOption(
                     ThemeMode.dark,
                     Icons.dark_mode_rounded,
                     'Dark',
                     provider,
                   ),
-
                   const SizedBox(width: 9),
-
                   _themeOption(
                     ThemeMode.system,
                     Icons.settings_suggest_rounded,
@@ -439,6 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // THEME OPTION
+
   Widget _themeOption(
     ThemeMode mode,
     IconData icon,
@@ -453,27 +463,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(13),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-
           padding: const EdgeInsets.symmetric(
             vertical: 15,
             horizontal: 4,
           ),
-
           decoration: BoxDecoration(
             color: selected
                 ? _accentColor.withValues(alpha: 0.12)
                 : (_isDark
                     ? AppColors.darkBackground
                     : AppColors.lightBackground),
-
             borderRadius: BorderRadius.circular(13),
-
             border: Border.all(
               color: selected ? _accentColor : _borderColor,
               width: selected ? 1.5 : 0.8,
             ),
           ),
-
           child: Column(
             children: [
               Icon(
@@ -481,9 +486,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 size: 22,
                 color: selected ? _accentColor : _secondaryColor,
               ),
-
               const SizedBox(height: 8),
-
               Text(
                 label,
                 style: TextStyle(
@@ -493,9 +496,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: selected ? _accentColor : _textColor,
                 ),
               ),
-
               const SizedBox(height: 5),
-
               if (selected)
                 Icon(
                   Icons.check_circle_rounded,
@@ -512,6 +513,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // PREFERENCES CARD
+
   Widget _buildPreferencesCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -552,8 +554,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _divider(),
 
+          // UPDATED SORTING ICON
+
           _settingTile(
-            icon: Icons.sort_rounded,
+            icon: Icons.swap_vert_rounded,
             title: 'Sorting Preferences',
             subtitle: _sortOrder,
             onTap: _showSortPicker,
@@ -575,6 +579,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ORGANIZATION CARD
+
   Widget _buildOrganizationCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -599,9 +604,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: _secondaryColor,
                   ),
           ),
-
           _divider(),
-
           _settingTile(
             icon: Icons.delete_outline_rounded,
             title: 'Trash',
@@ -610,7 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const TrashScreen(),
+                  builder: (_) => const TrashScreen(),
                 ),
               );
             },
@@ -621,6 +624,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // OPEN CATEGORY SCREEN AND REFRESH
+
   Future<void> _openManageCategories() async {
     if (_isLoadingCategories) return;
 
@@ -676,6 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // APPLICATION CARD
+
   Widget _buildApplicationCard() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -692,9 +697,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'organizing thoughts and keeping important notes together.',
             ),
           ),
-
           _divider(),
-
           _settingTile(
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Policy',
@@ -707,6 +710,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // OPEN PRIVACY POLICY
+
   void _openPrivacyPolicy() {
     Navigator.push(
       context,
@@ -717,6 +721,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // CARD HEADING
+
   Widget _cardHeading(
     IconData icon,
     String title,
@@ -729,9 +734,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: _accentColor,
           size: 21,
         ),
-
         const SizedBox(width: 10),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,9 +747,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: _textColor,
                 ),
               ),
-
               const SizedBox(height: 3),
-
               Text(
                 subtitle,
                 style: TextStyle(
@@ -762,6 +763,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // SETTING TILE
+
   Widget _settingTile({
     required IconData icon,
     required String title,
@@ -773,13 +775,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       contentPadding: const EdgeInsets.symmetric(vertical: 3),
       minLeadingWidth: 30,
       horizontalTitleGap: 12,
-
       leading: Icon(
         icon,
         color: _accentColor,
         size: 21,
       ),
-
       title: Text(
         title,
         style: TextStyle(
@@ -788,7 +788,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: _textColor,
         ),
       ),
-
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 3),
         child: Text(
@@ -799,18 +798,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-
       trailing: trailing ??
           Icon(
             Icons.chevron_right_rounded,
             color: _secondaryColor,
           ),
-
       onTap: onTap,
     );
   }
 
   // COLOR DOT
+
   Widget _colorDot(Color color) {
     return Container(
       width: 23,
@@ -826,6 +824,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // CARD DECORATION
+
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: _cardColor,
@@ -837,16 +836,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // DIVIDER
+  // UPDATED VISIBLE GOLD DIVIDER
+
   Widget _divider() {
     return Divider(
       height: 1,
-      thickness: 0.6,
-      color: _borderColor,
+      thickness: 0.8,
+      color: _isDark
+          ? Colors.white.withValues(alpha: 0.13)
+          : const Color(0xFFE8D8B9),
+      indent: 0,
+      endIndent: 0,
     );
   }
 
   // COLOR PICKER
+
   Future<void> _showColorPicker() async {
     await showModalBottomSheet(
       context: context,
@@ -872,9 +877,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 22),
-
                 Wrap(
                   spacing: 18,
                   runSpacing: 18,
@@ -913,7 +916,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                 ),
-
                 const SizedBox(height: 15),
               ],
             ),
@@ -924,6 +926,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // DYNAMIC CATEGORY PICKER
+
   Future<void> _showCategoryPicker() async {
     final categories = await _noteService.getCategories();
 
@@ -955,17 +958,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // SORT PICKER
-  Future<void> _showSortPicker() async {
-    const options = [
-      'Last Edited',
-      'Date Created',
-      'Alphabetically',
-    ];
+  // SORT PICKER — LAST EDITED REMOVED
 
+  Future<void> _showSortPicker() async {
     final result = await _showChoiceSheet(
-      'Sort Notes',
-      options,
+      'Sorting Preferences',
+      _sortOptions,
       _sortOrder,
     );
 
@@ -982,6 +980,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // LAYOUT PICKER
+
   Future<void> _showLayoutPicker() async {
     const options = [
       'List',
@@ -1009,6 +1008,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // CHOICE BOTTOM SHEET
+
   Future<String?> _showChoiceSheet(
     String title,
     List<String> options,
@@ -1038,9 +1038,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 ...options.map(
                   (option) => ListTile(
                     title: Text(
@@ -1069,6 +1067,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // INFORMATION DIALOG
+
   void _showInformation(
     String title,
     String message,
