@@ -546,84 +546,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  // THREE DOT MENU
-
-  Future<void> _showCategoryMenu(String category) async {
-    final isPinned = _pinnedCategories.contains(category);
-
-    final choice = await showMenu<String>(
-      context: context,
-      color: _cardColor,
-      elevation: 12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(17),
-      ),
-      position: const RelativeRect.fromLTRB(120, 180, 15, 0),
-      items: [
-        PopupMenuItem(
-          value: 'rename',
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, color: _accentColor, size: 21),
-              const SizedBox(width: 12),
-              Text('Rename', style: TextStyle(color: _textColor)),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'pin',
-          child: Row(
-            children: [
-              Icon(
-                isPinned
-                    ? Icons.push_pin_rounded
-                    : Icons.push_pin_outlined,
-                color: _accentColor,
-                size: 21,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                isPinned ? 'Unpin' : 'Pin',
-                style: TextStyle(color: _textColor),
-              ),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(
-                Icons.delete_outline_rounded,
-                color: Colors.redAccent,
-                size: 21,
-              ),
-              SizedBox(width: 12),
-              Text(
-                'Delete',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (!mounted) return;
-
-    switch (choice) {
-      case 'rename':
-        await _showCategoryDialog(oldName: category);
-        break;
-      case 'pin':
-        await _toggleCategoryPin(category);
-        break;
-      case 'delete':
-        await _deleteCategory(category);
-        break;
-    }
-  }
-
   // OPEN CATEGORY NOTES
 
   Future<void> _openCategory(String category) async {
@@ -650,7 +572,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       borderRadius: BorderRadius.circular(28),
       child: InkWell(
         onTap: () => _openCategory(category),
-        onLongPress: () => _showCategoryMenu(category),
         borderRadius: BorderRadius.circular(28),
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -731,16 +652,80 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
               SizedBox(
                 height: 27,
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
+                child: PopupMenuButton<String>(
                   tooltip: 'Category options',
-                  onPressed: () => _showCategoryMenu(category),
+                  padding: EdgeInsets.zero,
+                  position: PopupMenuPosition.over,
+                  offset: const Offset(40, -180),
+                  iconSize: 23,
                   icon: Icon(
                     Icons.more_horiz_rounded,
                     color: _secondaryColor,
-                    size: 23,
                   ),
+                  color: _cardColor,
+                  elevation: 12,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  onSelected: (choice) async {
+                    switch (choice) {
+                      case 'rename':
+                        await _showCategoryDialog(oldName: category);
+                        break;
+                      case 'pin':
+                        await _toggleCategoryPin(category);
+                        break;
+                      case 'delete':
+                        await _deleteCategory(category);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'rename',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, color: _accentColor),
+                          const SizedBox(width: 12),
+                          Text('Rename', style: TextStyle(color: _textColor)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'pin',
+                      child: Row(
+                        children: [
+                          Icon(
+                            isPinned
+                                ? Icons.push_pin_rounded
+                                : Icons.push_pin_outlined,
+                            color: _accentColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            isPinned ? 'Unpin' : 'Pin',
+                            style: TextStyle(color: _textColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.redAccent,
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.redAccent),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
