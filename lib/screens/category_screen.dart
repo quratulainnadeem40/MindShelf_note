@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mindshelf_note/services/local_storage_service.dart';
-import 'package:mindshelf_note/services/note_service.dart' hide NoteServices;
 
 import '../models/note_model.dart';
 import '../theme/color_app.dart';
@@ -28,6 +27,8 @@ class CategoriesScreen extends StatefulWidget {
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
   final NoteServices _service = NoteServices();
+
+  static const Color _gold = Color(0xFFE2B85F);
 
   List<String> _categories = [];
   List<NoteModel> _notes = [];
@@ -256,7 +257,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               title: Text(
                 isEditing ? 'Rename Category' : 'Add Category',
                 style: TextStyle(
-                  color: _textColor,
+                  color: _gold,
                   fontWeight: FontWeight.w800,
                 ),
               ),
