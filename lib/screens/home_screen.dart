@@ -29,10 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSearching = false;
 
   String _searchQuery = '';
-
-  // CHANGED: Default sorting is Date Created.
   String _sortOrder = 'Date Created';
-
   String _layout = 'List';
 
   static const Color _gold = Color(0xFFE2B85F);
@@ -88,12 +85,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
 
+      // OLD LAST EDITED SETTING WILL AUTOMATICALLY
+      // CHANGE TO DATE CREATED.
+
+      final savedSortOrder =
+          prefs.getString('notes_sort_order');
+
+      final validSortOrder =
+          savedSortOrder == 'Alphabetically'
+              ? 'Alphabetically'
+              : 'Date Created';
+
+      // SAVE UPDATED DEFAULT SORTING.
+
+      if (savedSortOrder != validSortOrder) {
+        await prefs.setString(
+          'notes_sort_order',
+          validSortOrder,
+        );
+      }
+
+      if (!mounted) return;
+
       setState(() {
         _notes = notes;
 
-        // CHANGED: Default sorting is Date Created.
-        _sortOrder =
-            prefs.getString('notes_sort_order') ?? 'Date Created';
+        _sortOrder = validSortOrder;
 
         _layout =
             prefs.getString('notes_layout') ?? 'List';
@@ -127,13 +144,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
 
     switch (_sortOrder) {
-      case 'Date Created':
-        // First created note appears first.
-        notes.sort(
-          (a, b) => a.createdAt.compareTo(b.createdAt),
-        );
-        break;
-
       case 'Alphabetically':
         notes.sort(
           (a, b) => a.title.toLowerCase().compareTo(
@@ -142,13 +152,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
 
-      case 'Last Edited':
-        notes.sort(
-          (a, b) => b.updatedAt.compareTo(a.updatedAt),
-        );
-        break;
-
+      case 'Date Created':
       default:
+        // FIRST CREATED NOTE APPEARS FIRST.
         notes.sort(
           (a, b) => a.createdAt.compareTo(b.createdAt),
         );
@@ -359,8 +365,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 14),
 
+                // ONLY TWO SORT OPTIONS.
+
                 ...[
-                  'Last Edited',
                   'Date Created',
                   'Alphabetically',
                 ].map((option) {
