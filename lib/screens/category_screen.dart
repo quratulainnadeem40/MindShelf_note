@@ -29,6 +29,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   final NoteServices _service = NoteServices();
 
   static const Color _gold = Color(0xFFE2B85F);
+  static const String _pinnedKey = 'mindshelf_pinned_categories';
 
   List<String> _categories = [];
   List<NoteModel> _notes = [];
@@ -37,8 +38,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Set<String> _pinnedCategories = {};
 
   bool _loading = true;
-
-  static const String _pinnedKey = 'mindshelf_pinned_categories';
 
   final Map<String, IconData> _availableCategoryIcons = {
     'person': Icons.person_outline_rounded,
@@ -95,19 +94,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Color get _buttonTextColor =>
       _isDark ? AppColors.darkBackground : AppColors.white;
 
-  List<String> get _displayCategories {
-    final result = [..._categories];
+  // CATEGORY SEPARATION
 
-    result.sort((a, b) {
-      final aPinned = _pinnedCategories.contains(a);
-      final bPinned = _pinnedCategories.contains(b);
+  List<String> get _pinnedList {
+    return _categories
+        .where((category) => _pinnedCategories.contains(category))
+        .toList();
+  }
 
-      if (aPinned == bPinned) return 0;
-
-      return aPinned ? -1 : 1;
-    });
-
-    return result;
+  List<String> get _allCategories {
+    return _categories
+        .where((category) => !_pinnedCategories.contains(category))
+        .toList();
   }
 
   @override
@@ -132,15 +130,25 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       final icons = results[2] as Map<String, String>;
       final prefs = results[3] as SharedPreferences;
 
+      final savedPins =
+          (prefs.getStringList(_pinnedKey) ?? []).toSet();
+
+      // Remove pin records for categories that no longer exist.
+      savedPins.retainAll(categories);
+
+      // Keep storage synchronized.
+      await prefs.setStringList(
+        _pinnedKey,
+        savedPins.toList(),
+      );
+
       if (!mounted) return;
 
       setState(() {
         _categories = categories;
         _notes = notes;
         _categoryIconKeys = icons;
-        _pinnedCategories =
-            (prefs.getStringList(_pinnedKey) ?? []).toSet();
-        _pinnedCategories.retainAll(categories);
+        _pinnedCategories = savedPins;
         _loading = false;
       });
     } catch (e) {
@@ -193,39 +201,63 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     }
   }
 
-  // PIN / UNPIN
+  // SAVE PINNED CATEGORIES
 
-  Future<void> _toggleCategoryPin(String category) async {
+  Future<void> _savePinnedCategories(
+    Set<String> updated,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
 
-    final updated = {..._pinnedCategories};
-    final isPinned = updated.contains(category);
-
-    if (isPinned) {
-      updated.remove(category);
-    } else {
-      updated.add(category);
-    }
-
-    await prefs.setStringList(
+    final success = await prefs.setStringList(
       _pinnedKey,
       updated.toList(),
     );
+
+    if (!success) {
+      throw Exception('Unable to save pinned categories.');
+    }
 
     if (!mounted) return;
 
     setState(() {
       _pinnedCategories = updated;
     });
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isPinned ? 'Category unpinned' : 'Category pinned',
+  // PIN / UNPIN
+
+  Future<void> _toggleCategoryPin(String category) async {
+    try {
+      final updated = {..._pinnedCategories};
+      final isPinned = updated.contains(category);
+
+      if (isPinned) {
+        updated.remove(category);
+      } else {
+        updated.add(category);
+      }
+
+      await _savePinnedCategories(updated);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isPinned ? 'Category unpinned' : 'Category pinned',
+          ),
+          duration: const Duration(seconds: 1),
         ),
-        duration: const Duration(seconds: 1),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to update pin status: $e'),
+        ),
+      );
+    }
   }
 
   // ADD / RENAME CATEGORY
@@ -383,8 +415,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _buttonColor,
-                    foregroundColor: _buttonTextColor,
+                    backgroundColor: _gold,
+  foregroundColor: Colors.black,
+  elevation: 2,
                   ),
                   child: Text(
                     isEditing ? 'Update' : 'Add Category',
@@ -415,10 +448,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         result.iconKey,
       );
 
-      if (isEditing &&
-          _pinnedCategories.contains(oldName)) {
-        await _toggleCategoryPin(oldName);
-        await _toggleCategoryPin(name);
+      // PRESERVE PIN STATUS AFTER RENAME
+      if (isEditing && oldName != name) {
+        final updated = {..._pinnedCategories};
+
+        if (updated.remove(oldName)) {
+          updated.add(name);
+          await _savePinnedCategories(updated);
+        }
       }
 
       await _loadData();
@@ -524,6 +561,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     if (!mounted) return;
 
     if (success) {
+      // REMOVE DELETED CATEGORY FROM PIN STORAGE
+      final updated = {..._pinnedCategories};
+      updated.remove(category);
+
+      await _savePinnedCategories(updated);
+
       await _loadData();
 
       if (!mounted) return;
@@ -589,7 +632,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // THEME MATCHING CATEGORY ICON
+              // CATEGORY ICON
 
               Container(
                 width: 88,
@@ -687,7 +730,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                         children: [
                           Icon(Icons.edit_outlined, color: _accentColor),
                           const SizedBox(width: 12),
-                          Text('Rename', style: TextStyle(color: _textColor)),
+                          Text(
+                            'Rename',
+                            style: TextStyle(color: _textColor),
+                          ),
                         ],
                       ),
                     ),
@@ -865,7 +911,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: _gold,
-  foregroundColor: Colors.black,
+            foregroundColor: Colors.black,
             elevation: 2,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(35),
@@ -876,11 +922,88 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
+  // SECTION TITLE
+
+  Widget _buildSectionTitle(String title, int count) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        bottom: 14,
+        top: 12,
+      ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: _textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.7,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 9,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: _accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                color: _accentColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // CATEGORY GRID
+
+  Widget _buildCategoryGrid(
+    List<String> categories, {
+    bool showAddCard = false,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 650 ? 3 : 2;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 15,
+            mainAxisSpacing: 15,
+            mainAxisExtent: 230,
+          ),
+          itemCount: categories.length + (showAddCard ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index == categories.length) {
+              return _addNewCard();
+            }
+
+            return _categoryCard(categories[index]);
+          },
+        );
+      },
+    );
+  }
+
   // MAIN SCREEN
 
   @override
   Widget build(BuildContext context) {
-    final categories = _displayCategories;
+    final pinnedCategories = _pinnedList;
+    final allCategories = _allCategories;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -896,33 +1019,38 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                   _buildHeader(),
 
                   Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final columns = width >= 650 ? 3 : 2;
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        20, 0, 20, 18,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // PINNED SECTION
 
-                        return GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(
-                            20, 0, 20, 18,
-                          ),
-                          physics: const BouncingScrollPhysics(),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columns,
-                            crossAxisSpacing: 15,
-                            mainAxisSpacing: 15,
-                            mainAxisExtent: 230,
-                          ),
-                          itemCount: categories.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == categories.length) {
-                              return _addNewCard();
-                            }
+                          if (pinnedCategories.isNotEmpty) ...[
+                            _buildSectionTitle(
+                              'PINNED',
+                              pinnedCategories.length,
+                            ),
+                            _buildCategoryGrid(pinnedCategories),
+                            const SizedBox(height: 15),
+                          ],
 
-                            return _categoryCard(categories[index]);
-                          },
-                        );
-                      },
+                          // ALL CATEGORIES SECTION
+
+                          _buildSectionTitle(
+                            'ALL CATEGORIES',
+                            allCategories.length,
+                          ),
+
+                          _buildCategoryGrid(
+                            allCategories,
+                            showAddCard: true,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 

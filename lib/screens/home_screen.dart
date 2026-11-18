@@ -76,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadHomeData() async {
     try {
       final results = await Future.wait([
-        _noteService.getNotes(),
+        _noteService.getActiveNotes(),
         SharedPreferences.getInstance(),
       ]);
 
